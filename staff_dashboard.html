@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Staff Dashboard - Facial Recognition System</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <h1>Staff Portal</h1>
+                <h2 id="welcome-msg">Welcome, Staff</h2>
+            </div>
+            <nav class="nav-links">
+                <a href="#" class="active">Dashboard</a>
+                <a href="#" id="logoutBtn">Logout</a>
+            </nav>
+        </header>
+
+        <main class="main-grid" style="grid-template-columns: 350px 1fr; gap: 20px;">
+
+            <!-- Left Column: Profile & Stats -->
+            <div style="display: flex; flex-direction: column; gap: 20px;">
+
+                <!-- My Profile Card -->
+                <div class="card">
+                    <div style="padding: 20px; border-bottom: 1px solid var(--border-color);">
+                        <h3>My Info</h3>
+                    </div>
+                    <div style="padding: 20px;" id="profileInfo">
+                        Loading info...
+                    </div>
+                </div>
+
+                <!-- Stats -->
+                <div class="card" style="text-align: center; padding: 20px;">
+                    <h3 style="color: var(--text-secondary); font-size: 0.9rem;">Annual Leave Balance</h3>
+                    <div class="stat-value" id="leaveBalance">--</div>
+                    <div class="stat-label">Days Remaining</div>
+                </div>
+                <div class="card" style="text-align: center; padding: 20px;">
+                    <h3 style="color: var(--text-secondary); font-size: 0.9rem;">Pending Requests</h3>
+                    <div class="stat-value" id="pendingCount">--</div>
+                    <div class="stat-label">Applications</div>
+                </div>
+            </div>
+
+            <!-- Right Column: Events, Attendance, Leaves -->
+            <div style="display: flex; flex-direction: column; gap: 20px;">
+
+                <!-- Events Widget -->
+                <div class="card"
+                    style="background: linear-gradient(135deg, #2563eb, #1e3a8a); color: white; border: none;">
+                    <div style="padding: 20px;">
+                        <h3 style="background: transparent; border: none; padding: 0; margin-bottom: 10px;">📅 Upcoming
+                            Holidays</h3>
+                        <div style="display: flex; gap: 20px; overflow-x: auto; padding-bottom: 5px;">
+                            <div
+                                style="background: rgba(255,255,255,0.1); padding: 10px; border-radius: 6px; min-width: 150px;">
+                                <div style="font-weight: bold;">Feb 10</div>
+                                <div style="font-size: 0.9rem;">Chinese New Year</div>
+                            </div>
+                            <div
+                                style="background: rgba(255,255,255,0.1); padding: 10px; border-radius: 6px; min-width: 150px;">
+                                <div style="font-weight: bold;">Apr 10</div>
+                                <div style="font-size: 0.9rem;">Hari Raya Aidilfitri</div>
+                            </div>
+                            <div
+                                style="background: rgba(255,255,255,0.1); padding: 10px; border-radius: 6px; min-width: 150px;">
+                                <div style="font-weight: bold;">May 1</div>
+                                <div style="font-size: 0.9rem;">Labour Day</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- My Attendance Section -->
+                <div class="card">
+                    <div style="padding: 15px 20px; border-bottom: 1px solid var(--border-color);">
+                        <h3>My Recent Attendance</h3>
+                    </div>
+                    <div class="log-container" style="max-height: 200px;">
+                        <table style="width: 100%; border-collapse: collapse; color: var(--text-secondary);">
+                            <thead>
+                                <tr style="text-align: left; border-bottom: 1px solid var(--border-color);">
+                                    <th style="padding: 10px;">Time</th>
+                                    <th style="padding: 10px;">Camera</th>
+                                    <th style="padding: 10px;">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="myAttendanceBody">
+                                <!-- JS Injected -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Leave Management Section -->
+                <div class="card">
+                    <div
+                        style="display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; border-bottom: 1px solid var(--border-color);">
+                        <h3>My Leave Requests</h3>
+                        <button id="applyLeaveBtn" class="btn-primary" style="width: auto; padding: 8px 16px;">+ Apply
+                            Leave</button>
+                    </div>
+                    <div class="log-container">
+                        <table style="width: 100%; border-collapse: collapse; color: var(--text-secondary);">
+                            <thead>
+                                <tr style="text-align: left; border-bottom: 1px solid var(--border-color);">
+                                    <th style="padding: 10px;">Type</th>
+                                    <th style="padding: 10px;">Dates (Duration)</th>
+                                    <th style="padding: 10px;">Reason</th>
+                                    <th style="padding: 10px;">Attachment</th>
+                                    <th style="padding: 10px;">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="leaveTableBody">
+                                <!-- Leave rows here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Apply Leave Modal -->
+    <div id="leaveModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Apply for Leave</h2>
+            <form id="leaveForm">
+                <div class="form-group">
+                    <label for="leaveType">Leave Type</label>
+                    <select id="leaveType" name="type" required
+                        style="width: 100%; padding: 10px; background: #2a2a2a; color: white; border: 1px solid var(--border-color); border-radius: 6px;">
+                        <option value="Annual">Annual Leave</option>
+                        <option value="Medical">Medical Leave</option>
+                        <option value="Emergency">Emergency Leave</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="startDate">Start Date</label>
+                    <input type="date" id="startDate" name="start" required>
+                </div>
+                <div class="form-group">
+                    <label for="endDate">End Date</label>
+                    <input type="date" id="endDate" name="end" required>
+                </div>
+                <div class="form-group">
+                    <label for="reason">Reason (Optional)</label>
+                    <textarea id="reason" name="reason" rows="3"
+                        style="width: 100%; padding: 10px; background: #2a2a2a; color: white; border: 1px solid var(--border-color); border-radius: 6px;"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="attachment">Attachment (Optional)</label>
+                    <input type="file" id="attachment" name="attachment"
+                        style="width: 100%; padding: 10px; background: #2a2a2a; color: white; border: 1px solid var(--border-color); border-radius: 6px;">
+                </div>
+                <button type="submit" class="btn-primary">Submit Application</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let currentUser = "";
+        let leaveData = {}; // Store leave objects by ID
+        let editingLeaveId = null;
+
+        // Check Auth and update info
+        fetch('/api/check_auth').then(async res => {
+            // ... (existing auth logic unchanged) ...
+            if (res.status === 401) window.location.href = 'login.html';
+            const data = await res.json();
+            currentUser = data.user;
+
+            document.getElementById('welcome-msg').textContent = `Welcome, ${data.user}`;
+            document.getElementById('leaveBalance').textContent = data.leave_balance;
+
+            // Populate Profile Info
+            const info = data.details || {};
+            document.getElementById('profileInfo').innerHTML = `
+                <div style="margin-bottom: 10px; font-size: 1.1rem; color: white;">${info.username}</div>
+                <div style="color: var(--text-secondary); font-size: 0.9rem;">
+                    <div>Position: <span style="color: var(--accent-color);">${info.position || '-'}</span></div>
+                    <div>Department: ${info.department || '-'}</div>
+                    <div style="margin-top: 10px;">ID: ${info.staff_id || '-'}</div>
+                    <div>Email: ${info.email || '-'}</div>
+                    <div>Phone: ${info.phone || '-'}</div>
+                </div>
+            `;
+
+            loadMyAttendance(data.user);
+        });
+
+        async function loadMyAttendance(username) {
+            try {
+                const res = await fetch(`/api/attendance/staff/${username}`);
+                const logs = await res.json();
+                const tbody = document.getElementById('myAttendanceBody');
+                tbody.innerHTML = '';
+
+                if (logs.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="3" style="padding: 10px; text-align: center;">No active records.</td></tr>';
+                    return;
+                }
+
+                logs.slice(0, 10).forEach(log => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td style="padding: 10px;">${log.timestamp}</td>
+                        <td style="padding: 10px;">${log.camera_id}</td>
+                        <td style="padding: 10px;"><span style="color: var(--success-color);">Present</span></td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } catch (e) {
+                console.error("Error loading attendance", e);
+            }
+        }
+
+        // Elements
+        const leaveTableBody = document.getElementById('leaveTableBody');
+        const modal = document.getElementById('leaveModal');
+        const applyBtn = document.getElementById('applyLeaveBtn');
+        const closeBtn = document.getElementsByClassName('close')[0];
+        const form = document.getElementById('leaveForm');
+        const logoutBtn = document.getElementById('logoutBtn');
+
+        // Logout
+        logoutBtn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            await fetch('/api/logout', { method: 'POST' });
+            window.location.href = 'login.html';
+        });
+
+        // Load Leaves
+        async function loadLeaves() {
+            try {
+                const res = await fetch('/api/leave');
+                const leaves = await res.json();
+
+                // Update Pending Count
+                const pending = leaves.filter(l => l.status === 'Pending').length;
+                document.getElementById('pendingCount').textContent = pending;
+
+                leaveTableBody.innerHTML = '';
+                if (leaves.length === 0) {
+                    leaveTableBody.innerHTML = '<tr><td colspan="5" style="padding: 20px; text-align: center;">No leave history found.</td></tr>';
+                    return;
+                }
+
+                leaves.forEach(l => {
+                    leaveData[l.id] = l; // Store data
+
+                    const row = document.createElement('tr');
+                    let statusColor = '#f59e0b'; // Pending
+                    if (l.status === 'Approved') statusColor = '#10b981';
+                    if (l.status === 'Rejected') statusColor = '#ef4444';
+
+                    const reason = l.reason || '-';
+                    const dates = `${l.start_date} -> ${l.end_date}`;
+
+                    // Duration
+                    const d1 = new Date(l.start_date);
+                    const d2 = new Date(l.end_date);
+                    const diffTime = Math.abs(d2 - d1);
+                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+
+                    // Attachment Link
+                    let attachmentHtml = '-';
+                    if (l.attachment_path) {
+                        attachmentHtml = `<a href="/uploads/${l.attachment_path}" target="_blank" style="color: var(--accent-color); text-decoration: underline;">View</a>`;
+                    }
+
+                    // Edit Button (Only for Pending)
+                    let statusHtml = `<span style="color: ${statusColor}; font-weight: 600; background: rgba(255,255,255,0.05); padding: 4px 8px; border-radius: 4px;">${l.status}</span>`;
+                    if (l.status === 'Pending') {
+                        // Styled like the status badge (cube/pill)
+                        statusHtml += ` <button onclick="editLeave(${l.id})" style="background: rgba(37, 99, 235, 0.2); border: none; color: #60a5fa; cursor: pointer; font-weight: 600; padding: 4px 8px; border-radius: 4px; font-size: 0.9rem; margin-left: 5px;">Edit</button>`;
+                    }
+
+                    row.innerHTML = `
+                        <td style="padding: 10px;">${l.type}</td>
+                        <td style="padding: 10px;">
+                            <div>${dates}</div>
+                            <div style="font-size: 0.8rem; color: var(--text-secondary);">(${diffDays} days)</div>
+                        </td>
+                        <td style="padding: 10px; font-size: 0.9em; max-width: 150px; overflow: hidden; text-overflow: ellipsis;">${reason}</td>
+                        <td style="padding: 10px; font-size: 0.9em;">${attachmentHtml}</td>
+                        <td style="padding: 10px;">${statusHtml}</td>
+                    `;
+                    leaveTableBody.appendChild(row);
+                });
+            } catch (e) {
+                console.error(e);
+            }
+        }
+        loadLeaves();
+
+        // Elements
+        const modalTitle = document.querySelector('#leaveModal h2');
+        const submitBtn = document.querySelector('#leaveModal button[type="submit"]');
+
+        // Edit Leave
+        window.editLeave = (id) => {
+            const l = leaveData[id];
+            if (!l) return;
+
+            editingLeaveId = id;
+            modalTitle.textContent = "Edit Leave Application";
+            submitBtn.textContent = "Update Application";
+
+            document.getElementById('leaveType').value = l.type;
+            document.getElementById('startDate').value = l.start_date;
+            document.getElementById('endDate').value = l.end_date;
+            document.getElementById('reason').value = l.reason || '';
+
+            modal.style.display = 'block';
+        };
+
+        // Modal Logic
+        const leaveTypeSelect = document.getElementById('leaveType');
+        const attachmentInput = document.getElementById('attachment');
+        const attachmentLabel = document.querySelector('label[for="attachment"]');
+
+        function updateFormRules() {
+            const type = leaveTypeSelect.value;
+            if (type === 'Medical') {
+                attachmentInput.required = true;
+                attachmentLabel.textContent = "Attachment (Required for Medical)*";
+                attachmentLabel.style.color = "#ef4444"; // Red to highlight
+            } else {
+                attachmentInput.required = false;
+                attachmentLabel.textContent = "Attachment (Optional)";
+                attachmentLabel.style.color = "var(--text-secondary)";
+            }
+        }
+
+        leaveTypeSelect.addEventListener('change', updateFormRules);
+
+        applyBtn.onclick = () => {
+            editingLeaveId = null;
+            form.reset();
+            modalTitle.textContent = "Apply for Leave";
+            submitBtn.textContent = "Submit Application";
+            updateFormRules(); // Reset rules
+            modal.style.display = 'block';
+        };
+
+        closeBtn.onclick = () => modal.style.display = 'none';
+        window.onclick = (event) => { if (event.target == modal) modal.style.display = 'none'; }
+
+        // Submit Leave
+        form.onsubmit = async (e) => {
+            e.preventDefault();
+            const formData = new FormData(form);
+
+            let url = '/api/leave';
+            let successMsg = 'Leave application submitted.';
+
+            if (editingLeaveId) {
+                url = `/api/leave/${editingLeaveId}`; // Use the NEW update endpoint
+                successMsg = 'Leave application updated.';
+            }
+
+            try {
+                const res = await fetch(url, {
+                    method: 'POST', // Both create and update behave as POST (multipart)
+                    body: formData
+                });
+
+                if (res.ok) {
+                    Swal.fire({
+                        title: 'Success!',
+                        text: successMsg,
+                        icon: 'success',
+                        timer: 1500,
+                        showConfirmButton: false
+                    });
+                    form.reset();
+                    modal.style.display = 'none';
+                    loadLeaves();
+                } else {
+                    const data = await res.json();
+                    Swal.fire('Error', data.error || 'Failed to submit leave.', 'error');
+                }
+            } catch (err) {
+                Swal.fire('Error', 'Connection error.', 'error');
+            }
+        };
+    </script>
+</body>
+
+</html>

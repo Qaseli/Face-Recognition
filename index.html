@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Facial Recognition Attendance System</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Socket.IO Client Library -->
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+
+<body>
+    <div class="container">
+        <!-- Header Section -->
+        <header class="header">
+            <div class="header-content">
+                <h1>Facial Recognition Attendance System</h1>
+                <h2>Hybrid AI-Based Attendance with AES-256 Security</h2>
+            </div>
+            <nav class="nav-links">
+                <a href="index.html" class="active">Dashboard</a>
+                <a href="staff.html">Staff</a>
+                <a href="#" id="logoutBtn">Logout</a>
+            </nav>
+            <div class="clock" id="clock">00:00:00</div>
+        </header>
+
+        <!-- System Status Panel -->
+        <section class="status-panel">
+            <div class="status-item">
+                <span class="status-label">Server Status</span>
+                <span class="status-value online" id="server-status">Online</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">RPi Client</span>
+                <span class="status-value connected" id="pi-status">Connected</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">Encryption</span>
+                <span class="status-value active">AES-256 Enabled</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">Recognition Engine</span>
+                <span class="status-value active">Active</span>
+            </div>
+        </section>
+
+        <!-- Live Camera Feed (Commented Out)
+        <div class="video-box">
+            <h3>Live Camera Feed</h3>
+            <img src="/video_feed" width="640" style="border-radius: 8px; border: 2px solid #333;" />
+        </div>
+        -->
+
+
+        <!-- Main Content Grid -->
+        <main class="main-grid">
+            <!-- Live Recognition Log -->
+            <div class="card recognition-log">
+                <h3>Live Recognition Log</h3>
+                <div class="log-header">
+                    <span>Time</span>
+                    <span>Camera</span>
+                    <span>Name</span>
+                    <span>Conf.</span>
+                    <span>Status</span>
+                </div>
+                <div class="log-container" id="log-container">
+                    <!-- Log items will be inserted here dynamically -->
+                </div>
+            </div>
+
+            <!-- Attendance Table -->
+            <div class="card attendance-table">
+                <h3>Recent Attendance</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Camera ID</th>
+                            <th>Timestamp</th>
+                            <th>Confidence</th>
+                        </tr>
+                    </thead>
+                    <tbody id="attendance-body">
+                        <!-- Table rows will be inserted here dynamically -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Leave Requests Admin Widget -->
+            <div class="card leave-admin-widget" style="grid-column: 1 / -1; margin-top: 20px;">
+                <h3>Pending Leave Requests</h3>
+                <div class="log-container" style="max-height: 250px;">
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <thead>
+                            <tr
+                                style="text-align: left; background-color: rgba(0,0,0,0.2); color: var(--text-secondary);">
+                                <th style="padding: 10px;">Staff</th>
+                                <th style="padding: 10px;">Type</th>
+                                <th style="padding: 10px;">Dates (Days)</th>
+                                <th style="padding: 10px;">Reason</th>
+                                <th style="padding: 10px;">Proof</th>
+                                <th style="padding: 10px;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-leave-body">
+                            <!-- Injected via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>System Version 1.0.0 | Final Year Project | Develop by Tazra</p>
+        </footer>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+
+</html>

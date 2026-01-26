@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Staff Management - Facial Recognition System</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <h1>Staff Management</h1>
+                <h2>Manage Registered Faces</h2>
+            </div>
+            <nav class="nav-links">
+                <a href="index.html">Dashboard</a>
+                <a href="staff.html" class="active">Staff</a>
+                <a href="#" id="logoutBtn">Logout</a>
+            </nav>
+        </header>
+
+        <main>
+            <div class="actions-bar">
+                <button id="addStaffBtn" class="btn-primary" style="width: auto;">+ Add New Staff</button>
+            </div>
+
+            <div class="card">
+                <table style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr
+                            style="border-bottom: 1px solid var(--border-color); text-align: left; color: var(--text-secondary);">
+                            <th style="padding: 15px; width: 50px;">No.</th>
+                            <th style="padding: 15px;">Name / Dept</th>
+                            <th style="padding: 15px;">Position / ID</th>
+                            <th style="padding: 15px;">Contact</th>
+                            <th style="padding: 15px; text-align: right;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="staffTableBody">
+                        <!-- Rows injected here -->
+                    </tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+
+    <!-- Add/Edit Staff Modal -->
+    <div id="staffModal" class="modal">
+        <div class="modal-content" style="max-width: 600px;">
+            <span class="close">&times;</span>
+            <h2 id="modalTitle">Add New Staff</h2>
+            <form id="staffForm">
+                <!-- Hidden input for Edit Mode -->
+                <input type="hidden" id="editUsername" name="editUsername">
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div class="form-group">
+                        <label>Full Name *</label>
+                        <input type="text" name="name" id="staffName" required placeholder="e.g. John Doe">
+                    </div>
+                    <!-- Staff ID is now auto-generated -->
+                    <div class="form-group" style="display:none;" id="staffIdGroup">
+                        <label>Staff ID</label>
+                        <input type="text" name="staff_id" id="staffId" readonly style="opacity:0.7;">
+                    </div>
+                    <div class="form-group">
+                        <label>Email</label>
+                        <input type="email" name="email" id="staffEmail">
+                    </div>
+                    <div class="form-group">
+                        <label>Phone</label>
+                        <input type="text" name="phone" id="staffPhone">
+                    </div>
+                    <div class="form-group">
+                        <label>Age</label>
+                        <input type="number" name="age" id="staffAge">
+                    </div>
+                    <div class="form-group">
+                        <label>Department</label>
+                        <select name="department" id="staffDept"
+                            style="width: 100%; padding: 10px; background: #2a2a2a; color: white; border: 1px solid var(--border-color); border-radius: 6px;">
+                            <option value="">Select Dept</option>
+                            <option value="IT">IT</option>
+                            <option value="HR">HR</option>
+                            <option value="Finance">Finance</option>
+                            <option value="Operations">Operations</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Position</label>
+                    <input type="text" name="position" id="staffPosition">
+                </div>
+
+                <div class="form-group" id="imageUploadGroup">
+                    <label>Face Image (Required for Attendance)</label>
+                    <input type="file" name="image" id="staffImage" accept="image/*">
+                </div>
+
+                <button type="submit" class="btn-primary" id="submitBtn">Register Staff</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Logs Modal -->
+    <div id="logModal" class="modal">
+        <div class="modal-content" style="max-width: 700px;">
+            <span class="close" onclick="document.getElementById('logModal').style.display='none'">&times;</span>
+            <h2>Attendance Log: <span id="logStaffName"></span></h2>
+            <div class="log-container" style="max-height: 400px; overflow-y: auto;">
+                <table style="width: 100%; border-collapse: collapse; color: var(--text-secondary);">
+                    <thead>
+                        <tr style="border-bottom: 1px solid var(--border-color);">
+                            <th style="padding: 10px;">Time</th>
+                            <th style="padding: 10px;">Camera</th>
+                            <th style="padding: 10px;">Confidence</th>
+                        </tr>
+                    </thead>
+                    <tbody id="logTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Photos Modal -->
+    <div id="photosModal" class="modal">
+        <div class="modal-content" style="max-width: 800px;">
+            <span class="close" onclick="document.getElementById('photosModal').style.display='none'">&times;</span>
+            <h2>Captured Photos: <span id="photoStaffName"></span></h2>
+            <div id="photosGrid"
+                style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 15px; max-height: 600px; overflow-y: auto; padding-top: 20px;">
+                <!-- Photos injected here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Check Auth
+        fetch('/api/check_auth').then(res => {
+            if (res.status === 401) window.location.href = 'login.html';
+        });
+
+        const staffTableBody = document.getElementById('staffTableBody');
+        const modal = document.getElementById('staffModal');
+        const logModal = document.getElementById('logModal');
+        const photosModal = document.getElementById('photosModal');
+        const form = document.getElementById('staffForm');
+
+        // Load Staff
+        async function loadStaff() {
+            staffTableBody.innerHTML = '<tr><td colspan="5" style="padding:20px; text-align:center;">Loading...</td></tr>';
+            try {
+                const res = await fetch('/api/staff');
+                const staff = await res.json();
+                staffTableBody.innerHTML = '';
+
+                if (staff.length === 0) {
+                    staffTableBody.innerHTML = '<tr><td colspan="5" style="padding:20px; text-align:center;">No staff registered.</td></tr>';
+                    return;
+                }
+
+                staff.forEach((s, index) => {
+                    const info = s.details || {};
+                    const tr = document.createElement('tr');
+                    tr.style.borderBottom = '1px solid var(--border-color)';
+                    tr.style.background = 'rgba(255,255,255,0.02)';
+                    tr.style.transition = 'background 0.2s';
+                    tr.onmouseover = () => tr.style.background = 'rgba(255,255,255,0.05)';
+                    tr.onmouseout = () => tr.style.background = 'rgba(255,255,255,0.02)';
+
+                    tr.innerHTML = `
+                        <td style="padding: 15px; color: var(--text-secondary);">${index + 1}</td>
+                        <td style="padding: 15px;">
+                            <div style="font-weight: 600; font-size: 1rem; color: white;">${s.name}</div>
+                            <div style="color: var(--text-secondary); font-size: 0.85rem;">${info.department || '-'}</div>
+                        </td>
+                        <td style="padding: 15px;">
+                            <div style="color: var(--accent-color); font-size: 0.95rem;">${info.position || 'Staff'}</div>
+                            <div style="font-size: 0.85rem; color: var(--text-secondary);">ID: ${info.staff_id || '-'}</div>
+                        </td>
+                        <td style="padding: 15px;">
+                             <div style="font-size: 0.9rem;">${info.email || '-'}</div>
+                             <div style="font-size: 0.85rem; color: var(--text-secondary);">${info.phone || '-'}</div>
+                        </td>
+                        <td style="padding: 15px; text-align: right;">
+                            <div style="display: flex; gap: 8px; justify-content: flex-end;">
+                                <button class="btn-primary" onclick="viewPhotos('${s.name}')" style="padding: 6px 12px; font-size: 0.8rem; background: #6366f1; flex: 1; max-width: 80px;">Photos</button>
+                                <button class="btn-primary" onclick='openEdit("${s.name}", ${JSON.stringify(info)})' style="padding: 6px 12px; font-size: 0.8rem; flex: 1; max-width: 80px;">Edit</button>
+                                <button class="btn-primary" onclick="viewLog('${s.name}')" style="padding: 6px 12px; font-size: 0.8rem; background: var(--text-secondary); flex: 1; max-width: 80px;">Log</button>
+                                <button class="btn-danger" style="padding: 6px 12px; font-size: 0.8rem; flex: 1; max-width: 80px;" onclick="deleteStaff('${s.name}')">Del</button>
+                            </div>
+                        </td>
+                    `;
+                    staffTableBody.appendChild(tr);
+                });
+            } catch (e) {
+                console.error(e);
+                staffTableBody.innerHTML = '<tr><td colspan="5" style="text-align:center; color: #ef4444;">Error loading staff.</td></tr>';
+            }
+        }
+        loadStaff();
+
+        // View Photos
+        window.viewPhotos = async (name) => {
+            document.getElementById('photoStaffName').textContent = name;
+            const grid = document.getElementById('photosGrid');
+            grid.innerHTML = '<p style="color:white;">Loading...</p>';
+            photosModal.style.display = 'block';
+
+            try {
+                const res = await fetch(`/api/staff/${name}/images`);
+                const images = await res.json();
+
+                grid.innerHTML = '';
+                if (images.length === 0) {
+                    grid.innerHTML = '<p style="color:white; grid-column: 1/-1; text-align:center;">No photos found.</p>';
+                    return;
+                }
+
+                images.forEach(imgSrc => {
+                    const img = document.createElement('img');
+                    img.src = imgSrc;
+                    img.style.width = '100%';
+                    img.style.height = '150px';
+                    img.style.objectFit = 'cover';
+                    img.style.borderRadius = '8px';
+                    img.style.border = '1px solid var(--border-color)';
+                    grid.appendChild(img);
+                });
+            } catch (e) {
+                grid.innerHTML = '<p style="color:red;">Error loading images.</p>';
+            }
+        };
+
+        // Modal Logic
+        document.getElementById('addStaffBtn').onclick = () => {
+            form.reset();
+            document.getElementById('modalTitle').textContent = "Add New Staff";
+            document.getElementById('editUsername').value = "";
+            document.getElementById('staffIdGroup').style.display = 'none'; // Hide ID for new staff
+            document.getElementById('staffName').readOnly = false;
+            document.getElementById('imageUploadGroup').style.display = 'block';
+            document.getElementById('submitBtn').textContent = "Register Staff";
+            modal.style.display = 'block';
+        };
+
+        window.openEdit = (username, info) => {
+            form.reset();
+            document.getElementById('modalTitle').textContent = "Edit Staff Details";
+            document.getElementById('editUsername').value = username;
+
+            // Populate fields
+            document.getElementById('staffName').value = info.full_name || username; // Use Full Name if available
+            document.getElementById('staffName').readOnly = true;
+
+            // Show ID in Edit Mode
+            document.getElementById('staffIdGroup').style.display = 'block';
+            document.getElementById('staffId').value = username; // Username IS the ID now
+
+            document.getElementById('staffEmail').value = info.email || '';
+            document.getElementById('staffPhone').value = info.phone || '';
+            document.getElementById('staffAge').value = info.age || '';
+            document.getElementById('staffPosition').value = info.position || '';
+            document.getElementById('staffDept').value = info.department || '';
+
+            document.getElementById('imageUploadGroup').style.display = 'none';
+            document.getElementById('submitBtn').textContent = "Update Details";
+            modal.style.display = 'block';
+        };
+
+        window.viewLog = async (name) => {
+            document.getElementById('logStaffName').textContent = name;
+            const tbody = document.getElementById('logTableBody');
+            tbody.innerHTML = '<tr><td colspan="3">Loading...</td></tr>';
+            logModal.style.display = 'block';
+
+            try {
+                const res = await fetch(`/api/attendance/staff/${name}`);
+                const logs = await res.json();
+
+                tbody.innerHTML = '';
+                if (logs.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="3">No records found.</td></tr>';
+                } else {
+                    logs.forEach(row => {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `<td>${row.timestamp}</td><td>${row.camera_id}</td><td>${(row.confidence * 100).toFixed(1)}%</td>`;
+                        tbody.appendChild(tr);
+                    });
+                }
+            } catch (e) {
+                tbody.innerHTML = '<tr><td colspan="3">Error loading logs.</td></tr>';
+            }
+        };
+
+        // Close Modals
+        window.onclick = (event) => {
+            if (event.target == modal) modal.style.display = 'none';
+            if (event.target == logModal) logModal.style.display = 'none';
+            if (event.target == photosModal) photosModal.style.display = 'none';
+        }
+
+        document.querySelectorAll('.close').forEach(c => c.onclick = function () {
+            this.closest('.modal').style.display = 'none';
+        });
+
+        // Logout
+        document.getElementById('logoutBtn').addEventListener('click', async (e) => {
+            e.preventDefault();
+            await fetch('/api/logout', { method: 'POST' });
+            window.location.href = 'login.html';
+        });
+
+        // Submit
+        form.onsubmit = async (e) => {
+            e.preventDefault();
+            const editMode = document.getElementById('editUsername').value !== "";
+            const formData = new FormData(form);
+            const btn = document.getElementById('submitBtn');
+            const originalText = btn.textContent;
+
+            btn.textContent = 'Processing...';
+            btn.disabled = true;
+
+            let url = '/api/staff';
+            let method = 'POST';
+            let body = formData;
+
+            if (editMode) {
+                // For PUT, convert to JSON for simplicity (or handle formData in PUT backend if preferred, but existing plan was PUT JSON)
+                url = `/api/staff/${document.getElementById('editUsername').value}`;
+                method = 'PUT';
+                const data = Object.fromEntries(formData.entries());
+                body = JSON.stringify(data);
+            }
+
+            try {
+                const res = await fetch(url, {
+                    method: method,
+                    headers: editMode ? { 'Content-Type': 'application/json' } : {},
+                    body: body
+                });
+
+                const data = await res.json();
+                if (res.ok) {
+                    modal.style.display = 'none';
+                    loadStaff();
+
+                    // Show Credentials Popup if New User
+                    if (!editMode && data.credentials) {
+                        Swal.fire({
+                            title: 'Staff Registered!',
+                            html: `
+                                <div style="text-align: left; background: #1a1a1a; padding: 15px; border-radius: 8px;">
+                                    <p><strong>Staff ID (Username):</strong> <span style="color:var(--accent-color);">${data.credentials.staff_id}</span></p>
+                                    <p><strong>Temporary Password:</strong> <span style="color:#ef4444; font-family:monospace; font-size:1.1em;">${data.credentials.temp_password}</span></p>
+                                    <p style="margin-top:10px; font-size:0.9em; color:#888;">Provide these credentials to the staff member. They will be asked to change their password on first login.</p>
+                                </div>
+                            `,
+                            icon: 'success',
+                            confirmButtonText: 'Done'
+                        });
+                    } else {
+                        // Success for Edit
+                        Swal.fire('Success', 'Staff details updated.', 'success');
+                    }
+
+                } else {
+                    alert(data.message || 'Error');
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Connection Error');
+            } finally {
+                btn.textContent = originalText;
+                btn.disabled = false;
+            }
+        };
+
+        // Delete Staff
+        window.deleteStaff = async (name) => {
+            const result = await Swal.fire({
+                title: `Delete ${name}?`,
+                text: "This action cannot be undone!",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#ef4444',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Yes, delete it!'
+            });
+
+            if (!result.isConfirmed) return;
+
+            try {
+                const res = await fetch(`/api/staff/${encodeURIComponent(name)}`, { method: 'DELETE' });
+                if (res.ok) {
+                    Swal.fire('Deleted!', 'Staff member has been removed.', 'success');
+                    loadStaff();
+                } else {
+                    Swal.fire('Error', 'Failed to delete staff.', 'error');
+                }
+            } catch (e) {
+                Swal.fire('Error', 'Connection error.', 'error');
+            }
+        };
+    </script>
+</body>
+
+</html>
