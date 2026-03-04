@@ -29,3 +29,6 @@ class Config:
 
     # File Uploads
     UPLOAD_FOLDER = os.getenv("UPLOAD_FOLDER", "uploads")
+    
+    # Firebase
+    FIREBASE_CREDENTIALS = os.getenv("FIREBASE_CREDENTIALS", "firebase_credentials.json")

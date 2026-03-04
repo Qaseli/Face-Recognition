@@ -1,0 +1,21 @@
+# requirements_pi.txt
+# Dependencies for Raspberry Pi Zero 2 W Client
+# Install with: pip install -r requirements_pi.txt
+
+# Core
+python-socketio[client]==5.11.1
+opencv-python-headless==4.9.0.80
+picamera2==0.3.17
+
+# Encryption
+pycryptodome==3.20.0
+
+# Hardware Control
+RPi.GPIO==0.7.1
+RPLCD==1.3.1
+smbus2==0.4.3
+
+# Note: Some packages may need system dependencies:
+# sudo apt install -y python3-picamera2 python3-libcamera
+# sudo apt install -y i2c-tools
+# Enable I2C: sudo raspi-config -> Interface Options -> I2C -> Enable

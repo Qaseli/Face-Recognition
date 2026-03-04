@@ -9,6 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
     <!-- SweetAlert2 -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>document.documentElement.setAttribute('data-theme', localStorage.getItem('theme') || 'blue');</script>
 </head>
 
 <body>
@@ -20,7 +21,9 @@
                 <h2 id="welcome-msg">Welcome, Staff</h2>
             </div>
             <nav class="nav-links">
+
                 <a href="#" class="active">Dashboard</a>
+                <a href="#" id="staffProfileBtn">Profile</a>
                 <a href="#" id="logoutBtn">Logout</a>
             </nav>
         </header>
@@ -32,24 +35,24 @@
 
                 <!-- My Profile Card -->
                 <div class="card">
-                    <div style="padding: 20px; border-bottom: 1px solid var(--border-color);">
-                        <h3>My Info</h3>
-                    </div>
-                    <div style="padding: 20px;" id="profileInfo">
-                        Loading info...
+                    <h3>My Info</h3>
+                    <div style="padding: 24px;" id="profileInfo">
+                        <div style="color: var(--text-secondary);">Loading info...</div>
                     </div>
                 </div>
 
                 <!-- Stats -->
-                <div class="card" style="text-align: center; padding: 20px;">
-                    <h3 style="color: var(--text-secondary); font-size: 0.9rem;">Annual Leave Balance</h3>
-                    <div class="stat-value" id="leaveBalance">--</div>
-                    <div class="stat-label">Days Remaining</div>
+                <div class="card"
+                    style="text-align: center; padding: 24px; align-items: center; justify-content: center;">
+                    <div class="stat-label">Annual Leave Balance</div>
+                    <div class="stat-value" id="leaveBalance" style="margin: 10px 0;">--</div>
+                    <div style="font-size: 0.85rem; color: var(--text-secondary);">Days Remaining</div>
                 </div>
-                <div class="card" style="text-align: center; padding: 20px;">
-                    <h3 style="color: var(--text-secondary); font-size: 0.9rem;">Pending Requests</h3>
-                    <div class="stat-value" id="pendingCount">--</div>
-                    <div class="stat-label">Applications</div>
+                <div class="card"
+                    style="text-align: center; padding: 24px; align-items: center; justify-content: center;">
+                    <div class="stat-label">Pending Requests</div>
+                    <div class="stat-value" id="pendingCount" style="margin: 10px 0;">--</div>
+                    <div style="font-size: 0.85rem; color: var(--text-secondary);">Applications</div>
                 </div>
             </div>
 
@@ -58,10 +61,11 @@
 
                 <!-- Events Widget -->
                 <div class="card"
-                    style="background: linear-gradient(135deg, #2563eb, #1e3a8a); color: white; border: none;">
-                    <div style="padding: 20px;">
-                        <h3 style="background: transparent; border: none; padding: 0; margin-bottom: 10px;">📅 Upcoming
-                            Holidays</h3>
+                    style="background: linear-gradient(135deg, rgba(37, 99, 235, 0.9), rgba(30, 58, 138, 0.9)); color: white; border: 1px solid rgba(255,255,255,0.1);">
+                    <div style="padding: 24px;">
+                        <h3
+                            style="background: transparent; border: none; padding: 0; margin-bottom: 16px; color: white;">
+                            📅 Upcoming Holidays</h3>
                         <div style="display: flex; gap: 20px; overflow-x: auto; padding-bottom: 5px;">
                             <div
                                 style="background: rgba(255,255,255,0.1); padding: 10px; border-radius: 6px; min-width: 150px;">
@@ -84,14 +88,16 @@
 
                 <!-- My Attendance Section -->
                 <div class="card">
-                    <div style="padding: 15px 20px; border-bottom: 1px solid var(--border-color);">
-                        <h3>My Recent Attendance</h3>
-                    </div>
+                    <h3>
+                        My Recent Attendance
+                        <button onclick="viewFullLogs()" class="btn-primary"
+                            style="width: auto; padding: 8px 20px; font-size: 0.9rem;">View All</button>
+                    </h3>
                     <div class="log-container" style="max-height: 200px;">
                         <table style="width: 100%; border-collapse: collapse; color: var(--text-secondary);">
                             <thead>
                                 <tr style="text-align: left; border-bottom: 1px solid var(--border-color);">
-                                    <th style="padding: 10px;">Time</th>
+                                    <th style="padding: 10px;">Date / Time</th>
                                     <th style="padding: 10px;">Camera</th>
                                     <th style="padding: 10px;">Status</th>
                                 </tr>
@@ -105,12 +111,11 @@
 
                 <!-- Leave Management Section -->
                 <div class="card">
-                    <div
-                        style="display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; border-bottom: 1px solid var(--border-color);">
-                        <h3>My Leave Requests</h3>
-                        <button id="applyLeaveBtn" class="btn-primary" style="width: auto; padding: 8px 16px;">+ Apply
-                            Leave</button>
-                    </div>
+                    <h3>
+                        My Leave Requests
+                        <button id="applyLeaveBtn" class="btn-primary"
+                            style="width: auto; padding: 8px 20px; font-size: 0.9rem;">+ Apply Leave</button>
+                    </h3>
                     <div class="log-container">
                         <table style="width: 100%; border-collapse: collapse; color: var(--text-secondary);">
                             <thead>
@@ -128,8 +133,111 @@
                         </table>
                     </div>
                 </div>
+
+                <!-- Late Alert Banner (shown if staff was late today) -->
+                <div id="lateAlertBanner" class="card"
+                    style="display: none; background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(239, 68, 68, 0.1)); border: 1px solid rgba(245, 158, 11, 0.3);">
+                    <div
+                        style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+                        <div>
+                            <span style="font-size: 1.3rem;">⚠️</span>
+                            <strong style="color: var(--warning-color);">Late Arrival Detected</strong>
+                            <p id="lateAlertText"
+                                style="margin: 6px 0 0 0; color: var(--text-secondary); font-size: 0.9rem;">You arrived
+                                late today. Submit an excuse if you have a reason.</p>
+                        </div>
+                        <button onclick="document.getElementById('lateExcuseModal').style.display='block'"
+                            class="btn-primary"
+                            style="width: auto; padding: 8px 20px; font-size: 0.9rem; background: var(--warning-color); color: #000;">
+                            📝 Submit Excuse
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Monthly Attendance Summary -->
+                <div class="card">
+                    <h3>📊 Monthly Attendance Summary</h3>
+                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 12px;">
+                        <div
+                            style="text-align: center; padding: 16px; background: rgba(16, 185, 129, 0.1); border-radius: 12px; border: 1px solid rgba(16, 185, 129, 0.2);">
+                            <div style="font-size: 1.8rem; font-weight: 700; color: var(--success-color);"
+                                id="summaryOnTime">0</div>
+                            <div style="font-size: 0.8rem; color: var(--text-secondary);">On Time</div>
+                        </div>
+                        <div
+                            style="text-align: center; padding: 16px; background: rgba(239, 68, 68, 0.1); border-radius: 12px; border: 1px solid rgba(239, 68, 68, 0.2);">
+                            <div style="font-size: 1.8rem; font-weight: 700; color: var(--error-color);"
+                                id="summaryLate">0</div>
+                            <div style="font-size: 0.8rem; color: var(--text-secondary);">Late</div>
+                        </div>
+                        <div
+                            style="text-align: center; padding: 16px; background: rgba(59, 130, 246, 0.1); border-radius: 12px; border: 1px solid rgba(59, 130, 246, 0.2);">
+                            <div style="font-size: 1.8rem; font-weight: 700; color: var(--accent-color);"
+                                id="summaryExcused">0</div>
+                            <div style="font-size: 0.8rem; color: var(--text-secondary);">Excused</div>
+                        </div>
+                        <div
+                            style="text-align: center; padding: 16px; background: rgba(245, 158, 11, 0.1); border-radius: 12px; border: 1px solid rgba(245, 158, 11, 0.2);">
+                            <div style="font-size: 1.8rem; font-weight: 700; color: var(--warning-color);"
+                                id="summaryUnexcused">0</div>
+                            <div style="font-size: 0.8rem; color: var(--text-secondary);">Unexcused</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- My Warnings Section -->
+                <div class="card">
+                    <h3>⚠️ My Warnings
+                        <span id="warningCount"
+                            style="background: var(--error-color); color: #fff; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; margin-left: 8px;">0</span>
+                    </h3>
+                    <div class="log-container" style="max-height: 250px;">
+                        <table style="width: 100%; border-collapse: collapse; color: var(--text-secondary);">
+                            <thead>
+                                <tr style="text-align: left; border-bottom: 1px solid var(--border-color);">
+                                    <th style="padding: 10px;">Level</th>
+                                    <th style="padding: 10px;">Month</th>
+                                    <th style="padding: 10px;">Reason</th>
+                                    <th style="padding: 10px;">Date Issued</th>
+                                </tr>
+                            </thead>
+                            <tbody id="warningsBody">
+                                <!-- JS Injected -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
         </main>
+    </div>
+
+    <!-- Submit Late Excuse Modal -->
+    <div id="lateExcuseModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>📝 Submit Late Excuse</h2>
+            <form id="lateExcuseForm">
+                <div class="form-group">
+                    <label for="excuseDate">Date</label>
+                    <input type="date" id="excuseDate" name="date" required
+                        style="width: 100%; padding: 10px; background: var(--input-bg); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: 6px;">
+                </div>
+                <div class="form-group">
+                    <label for="excuseReason">Reason for Late Arrival</label>
+                    <textarea id="excuseReason" name="reason" rows="4" required
+                        placeholder="Explain why you were late (e.g., heavy rain, car breakdown, traffic jam)"
+                        style="width: 100%; padding: 10px; background: var(--input-bg); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: 6px;"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="excuseProof">Proof / Supporting Document (optional)</label>
+                    <input type="file" id="excuseProof" name="attachment" accept="image/*,.pdf,.doc,.docx"
+                        style="width: 100%; padding: 10px; background: var(--input-bg); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: 6px;">
+                    <small style="color: var(--text-secondary);">Upload a photo or document as proof (e.g., photo of
+                        flooded road, traffic screenshot)</small>
+                </div>
+                <button type="submit" class="btn-primary" style="margin-top: 10px;">Submit Excuse</button>
+            </form>
+        </div>
     </div>
 
     <!-- Apply Leave Modal -->
@@ -165,13 +273,87 @@
                     <input type="file" id="attachment" name="attachment"
                         style="width: 100%; padding: 10px; background: #2a2a2a; color: white; border: 1px solid var(--border-color); border-radius: 6px;">
                 </div>
+
+
                 <button type="submit" class="btn-primary">Submit Application</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Attendance Log Modal -->
+    <div id="logModal" class="modal">
+        <div class="modal-content" style="max-width: 600px;">
+            <span class="close">&times;</span>
+            <h2>My Attendance History</h2>
+            <div class="log-container" style="max-height: 500px; overflow-y: auto;">
+                <table class="attendance-table">
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>Camera</th>
+                            <th>Confidence</th>
+                        </tr>
+                    </thead>
+                    <tbody id="fullLogBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Staff Profile Modal -->
+    <div id="staffProfileModal" class="modal">
+        <div class="modal-content" style="max-width: 500px;">
+            <span class="close">&times;</span>
+            <h2>My Profile</h2>
+            <form id="staffProfileForm">
+                <div class="form-group">
+                    <label>Full Name (Read-Only)</label>
+                    <input type="text" id="p_fullname" readonly style="opacity: 0.7;">
+                </div>
+                <div class="form-group">
+                    <label>Staff ID (Read-Only)</label>
+                    <input type="text" id="p_id" readonly style="opacity: 0.7;">
+                </div>
+                <div class="form-group">
+                    <label>Email (Google Login)</label>
+                    <input type="email" id="p_email" name="email">
+                </div>
+                <div class="form-group">
+                    <label>Phone</label>
+                    <input type="text" id="p_phone" name="phone">
+                </div>
+                <div class="form-group">
+                    <label>Position</label>
+                    <input type="text" id="p_position" name="position" placeholder="e.g. Software Developer">
+                </div>
+                <div class="form-group">
+                    <label>Department</label>
+                    <input type="text" id="p_department" name="department" placeholder="e.g. IT Department">
+                </div>
+
+                <div style="margin: 20px 0; border-top: 1px solid var(--border-color); padding-top: 15px;">
+                    <h3 style="font-size: 1rem; margin-bottom: 10px; color: var(--accent-color);">Security</h3>
+                    <div style="font-size: 0.85rem; color: #888; margin-bottom: 10px;">Set a password to login without
+                        Google.</div>
+
+                    <div class="form-group">
+                        <label>Current Password</label>
+                        <input type="password" id="p_current_pass" placeholder="Leave blank if you have none">
+                    </div>
+                    <div class="form-group">
+                        <label>New Password</label>
+                        <input type="password" id="p_new_pass" placeholder="Enter new password to change/set">
+                    </div>
+                </div>
+
+                <button type="submit" class="btn-primary" style="width: 100%;">Save Changes</button>
             </form>
         </div>
     </div>
 
     <script>
         let currentUser = "";
+        let globalUserData = {}; // Store full user details
         let leaveData = {}; // Store leave objects by ID
         let editingLeaveId = null;
 
@@ -181,12 +363,14 @@
             if (res.status === 401) window.location.href = 'login.html';
             const data = await res.json();
             currentUser = data.user;
+            globalUserData = data.details || {}; // Storage
+            const info = data.details || {};
+            const displayName = info.full_name || data.user;
 
-            document.getElementById('welcome-msg').textContent = `Welcome, ${data.user}`;
+            document.getElementById('welcome-msg').textContent = `Welcome, ${displayName}`;
             document.getElementById('leaveBalance').textContent = data.leave_balance;
 
             // Populate Profile Info
-            const info = data.details || {};
             document.getElementById('profileInfo').innerHTML = `
                 <div style="margin-bottom: 10px; font-size: 1.1rem; color: white;">${info.username}</div>
                 <div style="color: var(--text-secondary); font-size: 0.9rem;">
@@ -213,10 +397,25 @@
                     return;
                 }
 
-                logs.slice(0, 10).forEach(log => {
+                // Group by date, show only first scan per day (check-in)
+                const byDate = {};
+                logs.forEach(log => {
+                    const dateKey = new Date(log.timestamp).toLocaleDateString('en-CA'); // YYYY-MM-DD
+                    if (!byDate[dateKey]) byDate[dateKey] = log; // Keep first (earliest) per day
+                });
+
+                // Show top 5 days on dashboard
+                const dailyEntries = Object.values(byDate).slice(0, 5);
+                dailyEntries.forEach(log => {
                     const tr = document.createElement('tr');
+                    const dt = new Date(log.timestamp);
+                    const dateStr = dt.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+                    const timeStr = dt.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
                     tr.innerHTML = `
-                        <td style="padding: 10px;">${log.timestamp}</td>
+                        <td style="padding: 10px;">
+                            <div style="font-weight: 500;">${dateStr}</div>
+                            <div style="font-size: 0.8rem; color: var(--accent-color);">${timeStr}</div>
+                        </td>
                         <td style="padding: 10px;">${log.camera_id}</td>
                         <td style="padding: 10px;"><span style="color: var(--success-color);">Present</span></td>
                     `;
@@ -226,6 +425,51 @@
                 console.error("Error loading attendance", e);
             }
         }
+
+        window.viewFullLogs = async () => {
+            const modal = document.getElementById('logModal');
+            const tbody = document.getElementById('fullLogBody');
+            tbody.innerHTML = '<tr><td colspan="3">Loading...</td></tr>';
+            modal.style.display = 'block';
+
+            try {
+                const res = await fetch(`/api/attendance/staff/${currentUser}`);
+                const logs = await res.json();
+                tbody.innerHTML = '';
+
+                // Group by date — 1 entry per day (first check-in)
+                const byDate = {};
+                logs.forEach(log => {
+                    const dateKey = new Date(log.timestamp).toLocaleDateString('en-CA');
+                    if (!byDate[dateKey]) byDate[dateKey] = log;
+                });
+
+                const dailyEntries = Object.values(byDate);
+                if (dailyEntries.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="3" style="padding: 10px; text-align: center;">No records found.</td></tr>';
+                    return;
+                }
+
+                dailyEntries.forEach(log => {
+                    const tr = document.createElement('tr');
+                    tr.style.borderBottom = '1px solid var(--border-color)';
+                    const dt = new Date(log.timestamp);
+                    const dateStr = dt.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+                    const timeStr = dt.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                    tr.innerHTML = `
+                        <td style="padding: 10px;">
+                            <div style="font-weight: 500;">${dateStr}</div>
+                            <div style="font-size: 0.8rem; color: var(--accent-color);">${timeStr}</div>
+                        </td>
+                        <td style="padding: 10px;">${log.camera_id}</td>
+                        <td style="padding: 10px;">${(log.confidence * 100).toFixed(1)}%</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } catch (e) {
+                tbody.innerHTML = '<tr><td colspan="3">Error loading logs.</td></tr>';
+            }
+        };
 
         // Elements
         const leaveTableBody = document.getElementById('leaveTableBody');
@@ -245,7 +489,8 @@
         // Load Leaves
         async function loadLeaves() {
             try {
-                const res = await fetch('/api/leave');
+                // Add timestamp to prevent caching
+                const res = await fetch(`/api/leave?t=${new Date().getTime()}`);
                 const leaves = await res.json();
 
                 // Update Pending Count
@@ -281,11 +526,11 @@
                         attachmentHtml = `<a href="/uploads/${l.attachment_path}" target="_blank" style="color: var(--accent-color); text-decoration: underline;">View</a>`;
                     }
 
-                    // Edit Button (Only for Pending)
+                    // Edit + Cancel Buttons (Only for Pending)
                     let statusHtml = `<span style="color: ${statusColor}; font-weight: 600; background: rgba(255,255,255,0.05); padding: 4px 8px; border-radius: 4px;">${l.status}</span>`;
                     if (l.status === 'Pending') {
-                        // Styled like the status badge (cube/pill)
                         statusHtml += ` <button onclick="editLeave(${l.id})" style="background: rgba(37, 99, 235, 0.2); border: none; color: #60a5fa; cursor: pointer; font-weight: 600; padding: 4px 8px; border-radius: 4px; font-size: 0.9rem; margin-left: 5px;">Edit</button>`;
+                        statusHtml += ` <button onclick="cancelLeave(${l.id})" style="background: rgba(239, 68, 68, 0.2); border: none; color: #ef4444; cursor: pointer; font-weight: 600; padding: 4px 8px; border-radius: 4px; font-size: 0.9rem; margin-left: 5px;">Cancel</button>`;
                     }
 
                     row.innerHTML = `
@@ -327,6 +572,46 @@
             modal.style.display = 'block';
         };
 
+        // Cancel Leave Request
+        window.cancelLeave = async (id) => {
+            console.log('Cancel leave ID:', id);
+            if (!id && id !== 0) {
+                Swal.fire({ icon: 'error', title: 'Error', text: 'Invalid leave request ID' });
+                return;
+            }
+
+            const result = await Swal.fire({
+                title: 'Cancel Leave Request?',
+                text: 'Are you sure you want to cancel this leave request? This cannot be undone.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#ef4444',
+                cancelButtonColor: '#6b7280',
+                confirmButtonText: 'Yes, Cancel It',
+                cancelButtonText: 'No, Keep It'
+            });
+
+            if (result.isConfirmed) {
+                try {
+                    const res = await fetch(`/api/leave/${id}`, {
+                        method: 'DELETE',
+                        credentials: 'include',
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                    const data = await res.json();
+                    if (res.ok) {
+                        Swal.fire({ icon: 'success', title: 'Cancelled!', text: 'Leave request has been cancelled.', timer: 1500, showConfirmButton: false });
+                        loadLeaves();
+                    } else {
+                        Swal.fire({ icon: 'error', title: 'Error', text: data.error || 'Failed to cancel' });
+                    }
+                } catch (e) {
+                    console.error('Cancel leave error:', e);
+                    Swal.fire({ icon: 'error', title: 'Error', text: 'Network error: ' + e.message });
+                }
+            }
+        };
+
         // Modal Logic
         const leaveTypeSelect = document.getElementById('leaveType');
         const attachmentInput = document.getElementById('attachment');
@@ -356,8 +641,18 @@
             modal.style.display = 'block';
         };
 
-        closeBtn.onclick = () => modal.style.display = 'none';
-        window.onclick = (event) => { if (event.target == modal) modal.style.display = 'none'; }
+        // Universal Modal Close
+        document.querySelectorAll('.close').forEach(btn => {
+            btn.onclick = function () {
+                this.closest('.modal').style.display = 'none';
+            };
+        });
+
+        window.onclick = (event) => {
+            if (event.target.classList.contains('modal')) {
+                event.target.style.display = 'none';
+            }
+        }
 
         // Submit Leave
         form.onsubmit = async (e) => {
@@ -397,6 +692,199 @@
                 Swal.fire('Error', 'Connection error.', 'error');
             }
         };
+        // Profile Modal Logic
+        const profileModal = document.getElementById('staffProfileModal');
+        document.getElementById('staffProfileBtn').onclick = (e) => {
+            e.preventDefault();
+            // Populate
+            document.getElementById('p_fullname').value = globalUserData.full_name || currentUser;
+            document.getElementById('p_id').value = globalUserData.staff_id || currentUser;
+            document.getElementById('p_email').value = globalUserData.email || '';
+            document.getElementById('p_phone').value = globalUserData.phone || '';
+            document.getElementById('p_position').value = globalUserData.position || '';
+            document.getElementById('p_department').value = globalUserData.department || '';
+            document.getElementById('p_current_pass').value = '';
+            document.getElementById('p_new_pass').value = '';
+
+            profileModal.style.display = 'block';
+        };
+
+        document.getElementById('staffProfileForm').onsubmit = async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('p_email').value;
+            const phone = document.getElementById('p_phone').value;
+            const currentPass = document.getElementById('p_current_pass').value;
+            const newPass = document.getElementById('p_new_pass').value;
+
+            // 1. Update Details
+            try {
+                await fetch('/api/user/update_profile', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, phone, position: document.getElementById('p_position').value, department: document.getElementById('p_department').value })
+                });
+
+                // 2. Update Password (if requested)
+                if (newPass) {
+                    const res = await fetch('/api/user/update_password', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            current_password: currentPass,
+                            new_password: newPass
+                        })
+                    });
+                    const data = await res.json();
+                    if (!res.ok) {
+                        throw new Error(data.error || 'Password update failed');
+                    }
+                }
+
+                Swal.fire('Success', 'Profile updated!', 'success');
+                profileModal.style.display = 'none';
+
+            } catch (err) {
+                Swal.fire('Error', err.message, 'error');
+            }
+        };
+
+        // --- Late Alert, Warnings, Monthly Summary ---
+
+        async function checkLateToday() {
+            try {
+                const res = await fetch(`/api/staff/${currentUser}/attendance`);
+                if (!res.ok) return;
+                const data = await res.json();
+
+                const today = new Date().toISOString().split('T')[0];
+                const todayEntries = data.filter(e => {
+                    const ts = e.timestamp || '';
+                    return ts.startsWith(today);
+                });
+
+                if (todayEntries.length > 0) {
+                    // Find earliest arrival
+                    let earliest = null;
+                    for (const entry of todayEntries) {
+                        const ts = entry.timestamp || '';
+                        let timePart;
+                        if (ts.includes(',')) {
+                            timePart = ts.split(',')[1].trim();
+                        } else if (ts.includes(' ')) {
+                            timePart = ts.split(' ')[1];
+                        }
+                        if (timePart && (!earliest || timePart < earliest)) {
+                            earliest = timePart;
+                        }
+                    }
+
+                    if (earliest && earliest > '09:00:00') {
+                        const banner = document.getElementById('lateAlertBanner');
+                        const text = document.getElementById('lateAlertText');
+                        if (banner) {
+                            banner.style.display = 'block';
+                            text.textContent = `You arrived at ${earliest} today (cutoff: 9:00 AM). Submit an excuse if you have a valid reason.`;
+                        }
+                        // Pre-fill the excuse date
+                        const dateInput = document.getElementById('excuseDate');
+                        if (dateInput) dateInput.value = today;
+                    }
+                }
+            } catch (err) {
+                console.error('Failed to check late status:', err);
+            }
+        }
+
+        async function loadMonthlyAttendanceSummary() {
+            try {
+                const month = new Date().toISOString().slice(0, 7); // YYYY-MM
+                const res = await fetch(`/api/attendance/summary/${currentUser}?month=${month}`);
+                if (!res.ok) return;
+                const summary = await res.json();
+
+                document.getElementById('summaryOnTime').textContent = summary.on_time || 0;
+                document.getElementById('summaryLate').textContent = summary.late || 0;
+                document.getElementById('summaryExcused').textContent = summary.excused || 0;
+                document.getElementById('summaryUnexcused').textContent = summary.unexcused_late || 0;
+            } catch (err) {
+                console.error('Failed to load attendance summary:', err);
+            }
+        }
+
+        async function loadMyWarnings() {
+            try {
+                const res = await fetch('/api/warnings');
+                if (!res.ok) return;
+                const warnings = await res.json();
+
+                const tbody = document.getElementById('warningsBody');
+                const countEl = document.getElementById('warningCount');
+                if (!tbody) return;
+
+                countEl.textContent = warnings.length;
+
+                if (warnings.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding: 20px; color: var(--text-secondary);">✅ No warnings — keep up the good work!</td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = warnings.map(w => {
+                    const levelColors = { 1: 'var(--warning-color)', 2: '#f97316', 3: 'var(--error-color)' };
+                    const levelLabels = { 1: '1st Warning', 2: '2nd Warning', 3: 'Final Warning ⚠️' };
+                    const color = levelColors[w.level] || 'var(--text-secondary)';
+
+                    return `<tr>
+                        <td style="padding: 10px;"><span style="color: ${color}; font-weight: 700;">${levelLabels[w.level] || `Level ${w.level}`}</span></td>
+                        <td style="padding: 10px;">${w.month}</td>
+                        <td style="padding: 10px; max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${w.reason}">${w.reason}</td>
+                        <td style="padding: 10px;">${w.issued_at ? w.issued_at.split(' ')[0] : '-'}</td>
+                    </tr>`;
+                }).join('');
+            } catch (err) {
+                console.error('Failed to load warnings:', err);
+            }
+        }
+
+        // Submit Late Excuse
+        const excuseForm = document.getElementById('lateExcuseForm');
+        if (excuseForm) {
+            excuseForm.onsubmit = async (e) => {
+                e.preventDefault();
+                const formData = new FormData(excuseForm);
+                // Add arrival_time if we detected it
+                const lateText = document.getElementById('lateAlertText')?.textContent || '';
+                const timeMatch = lateText.match(/(\d{2}:\d{2}:\d{2})/);
+                if (timeMatch) formData.append('arrival_time', timeMatch[1]);
+
+                try {
+                    const res = await fetch('/api/late-appeal', { method: 'POST', body: formData });
+                    if (res.ok) {
+                        Swal.fire({ title: 'Submitted!', text: 'Your late excuse has been submitted for admin review.', icon: 'success', timer: 2000, showConfirmButton: false });
+                        excuseForm.reset();
+                        document.getElementById('lateExcuseModal').style.display = 'none';
+                        loadMonthlyAttendanceSummary();
+                    } else {
+                        const data = await res.json();
+                        Swal.fire('Error', data.error || 'Failed to submit excuse.', 'error');
+                    }
+                } catch (err) {
+                    Swal.fire('Error', 'Connection error.', 'error');
+                }
+            };
+        }
+
+        // Set today's date as default in excuse form
+        const excuseDateInput = document.getElementById('excuseDate');
+        if (excuseDateInput) {
+            excuseDateInput.value = new Date().toISOString().split('T')[0];
+            excuseDateInput.max = new Date().toISOString().split('T')[0];
+        }
+
+        // Load all new features
+        checkLateToday();
+        loadMonthlyAttendanceSummary();
+        loadMyWarnings();
+
     </script>
 </body>
 

@@ -11,22 +11,42 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
     <!-- SweetAlert2 -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 
 <body>
     <div class="container">
         <!-- Header Section -->
-        <header class="header">
-            <div class="header-content">
-                <h1>Facial Recognition Attendance System</h1>
-                <h2>Hybrid AI-Based Attendance with AES-256 Security</h2>
+        <header class="header"
+            style="display: grid; grid-template-columns: 1fr auto; grid-template-rows: auto auto; gap: 8px 24px; align-items: center;">
+            <div class="header-content"
+                style="display: flex; align-items: center; gap: 15px; grid-column: 1; grid-row: 1;">
+                <img src="logo.png" alt="System Logo" style="height: 95px; width: 95px; object-fit: contain;">
+                <div>
+                    <h1 style="margin: 0; line-height: 1.2;">Facial Recognition Attendance System</h1>
+                    <h2 style="margin: 5px 0 0 0; font-size: 1rem; opacity: 0.8;">Hybrid AI-Based Attendance with
+                        AES-256 Security</h2>
+                    <h3 id="adminNameDisplay"
+                        style="margin: 5px 0 0 0; font-size: 0.9rem; color: var(--accent-color); font-weight: 500;">
+                        Welcome, Administrator</h3>
+                </div>
             </div>
-            <nav class="nav-links">
+            <nav class="nav-links" style="margin: 0; padding-left: 110px; grid-column: 1; grid-row: 2;">
                 <a href="index.html" class="active">Dashboard</a>
                 <a href="staff.html">Staff</a>
+                <a href="#" id="profileBtn">Profile</a>
                 <a href="#" id="logoutBtn">Logout</a>
             </nav>
-            <div class="clock" id="clock">00:00:00</div>
+            <div
+                style="display: flex; flex-direction: column; align-items: flex-end; justify-content: center; gap: 6px; grid-column: 2; grid-row: 1 / 3;">
+                <div class="clock" id="clock">00:00:00</div>
+                <button id="themeToggle" onclick="cycleTheme()" title="Switch Theme"
+                    style="background: var(--card-bg); border: 1px solid var(--border-color); color: var(--text-primary); padding: 5px 12px; border-radius: 8px; cursor: pointer; font-size: 0.75rem; display: flex; align-items: center; gap: 5px; backdrop-filter: var(--backdrop-blur);">
+                    <span id="themeIcon">🔵</span>
+                    <span id="themeLabel">Blue</span>
+                </button>
+            </div>
         </header>
 
         <!-- System Status Panel -->
@@ -41,7 +61,7 @@
             </div>
             <div class="status-item">
                 <span class="status-label">Encryption</span>
-                <span class="status-value active">AES-256 Enabled</span>
+                <span class="status-value active" style="white-space: nowrap; font-size: 0.9em;">AES-256 Enabled</span>
             </div>
             <div class="status-item">
                 <span class="status-label">Recognition Engine</span>
@@ -59,12 +79,39 @@
 
         <!-- Main Content Grid -->
         <main class="main-grid">
+            <!-- Analytics Chart -->
+            <div class="card" style="grid-column: 1 / -1; margin-bottom: 0;">
+                <h3>Attendance Overview (Last 7 Days)</h3>
+                <div style="padding: 20px; height: 300px; position: relative;">
+                    <canvas id="attendanceChart"></canvas>
+                </div>
+            </div>
+
             <!-- Live Recognition Log -->
             <div class="card recognition-log">
-                <h3>Live Recognition Log</h3>
+                <h3
+                    style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+                    <span id="logTitle" style="display: flex; align-items: center; gap: 8px;">
+                        📋 Live Recognition Log
+                    </span>
+                    <span style="display: flex; align-items: center; gap: 8px;">
+                        <span
+                            style="display: flex; align-items: center; gap: 4px; background: rgba(59,130,246,0.1); border: 1px solid rgba(59,130,246,0.3); border-radius: 8px; padding: 4px 10px;">
+                            <span style="font-size: 0.85rem;">📅</span>
+                            <input type="date" id="logDatePicker" style="padding: 2px 4px; border: none; background: transparent; 
+                                color: var(--text-primary); font-size: 0.8rem; cursor: pointer; 
+                                font-family: inherit; outline: none;" title="Browse attendance by date">
+                        </span>
+                        <button id="backToLiveBtn" onclick="backToLive()" style="display:none; padding: 5px 12px; font-size: 0.75rem; font-weight: 600;
+                            border-radius: 8px; background: linear-gradient(135deg, #3b82f6, #2563eb); 
+                            color: white; border: none; cursor: pointer; letter-spacing: 0.3px;
+                            box-shadow: 0 2px 8px rgba(59,130,246,0.3); transition: all 0.2s ease;">
+                            ◀ Back to Live
+                        </button>
+                    </span>
+                </h3>
                 <div class="log-header">
                     <span>Time</span>
-                    <span>Camera</span>
                     <span>Name</span>
                     <span>Conf.</span>
                     <span>Status</span>
@@ -76,39 +123,118 @@
 
             <!-- Attendance Table -->
             <div class="card attendance-table">
-                <h3>Recent Attendance</h3>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Name</th>
-                            <th>Camera ID</th>
-                            <th>Timestamp</th>
-                            <th>Confidence</th>
-                        </tr>
-                    </thead>
-                    <tbody id="attendance-body">
-                        <!-- Table rows will be inserted here dynamically -->
-                    </tbody>
-                </table>
+                <h3>
+                    Recent Attendance
+                    <span style="display: flex; gap: 8px;">
+                        <button onclick="window.location.href='/api/export/today'" class="btn-primary"
+                            style="padding: 6px 12px; font-size: 0.8rem; width: auto; background: var(--success-color);">
+                            Today's CSV 📥
+                        </button>
+                    </span>
+                </h3>
+                <div class="scrollable-table">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Timestamp</th>
+                                <th>Confidence</th>
+                            </tr>
+                        </thead>
+                        <tbody id="attendance-body">
+                            <!-- Table rows will be inserted here dynamically -->
+                        </tbody>
+                    </table>
+                </div>
             </div>
 
             <!-- Leave Requests Admin Widget -->
-            <div class="card leave-admin-widget" style="grid-column: 1 / -1; margin-top: 20px;">
-                <h3>Pending Leave Requests</h3>
-                <div class="log-container" style="max-height: 250px;">
-                    <table style="width: 100%; border-collapse: collapse;">
+            <div class="card leave-admin-widget" style="grid-column: 1 / -1; margin-top: 24px;">
+                <h3 style="display: flex; align-items: center; gap: 0;">
+                    <span style="margin-right: 16px;">Leave Requests</span>
+                    <div id="leaveFilterTabs" style="display: flex; gap: 4px;">
+                        <button onclick="filterLeaves('Pending')" id="leaveTabPending" class="leave-tab active-tab"
+                            style="padding: 5px 14px; font-size: 0.8rem; border: 1px solid var(--border-color); border-radius: 20px; cursor: pointer; background: var(--accent-color); color: #fff; transition: all 0.2s;">
+                            ⏳ Pending <span id="leavePendingCount"
+                                style="margin-left: 4px; background: rgba(255,255,255,0.25); padding: 1px 6px; border-radius: 10px; font-size: 0.7rem;">0</span>
+                        </button>
+                        <button onclick="filterLeaves('Approved')" id="leaveTabApproved" class="leave-tab"
+                            style="padding: 5px 14px; font-size: 0.8rem; border: 1px solid var(--border-color); border-radius: 20px; cursor: pointer; background: var(--card-bg); color: var(--text-secondary); transition: all 0.2s;">
+                            ✅ Approved <span id="leaveApprovedCount"
+                                style="margin-left: 4px; background: rgba(255,255,255,0.1); padding: 1px 6px; border-radius: 10px; font-size: 0.7rem;">0</span>
+                        </button>
+                        <button onclick="filterLeaves('Rejected')" id="leaveTabRejected" class="leave-tab"
+                            style="padding: 5px 14px; font-size: 0.8rem; border: 1px solid var(--border-color); border-radius: 20px; cursor: pointer; background: var(--card-bg); color: var(--text-secondary); transition: all 0.2s;">
+                            ❌ Rejected <span id="leaveRejectedCount"
+                                style="margin-left: 4px; background: rgba(255,255,255,0.1); padding: 1px 6px; border-radius: 10px; font-size: 0.7rem;">0</span>
+                        </button>
+                    </div>
+                </h3>
+                <div class="scrollable-table">
+                    <table class="attendance-table" style="width: 100%;">
                         <thead>
-                            <tr
-                                style="text-align: left; background-color: rgba(0,0,0,0.2); color: var(--text-secondary);">
-                                <th style="padding: 10px;">Staff</th>
-                                <th style="padding: 10px;">Type</th>
-                                <th style="padding: 10px;">Dates (Days)</th>
-                                <th style="padding: 10px;">Reason</th>
-                                <th style="padding: 10px;">Proof</th>
-                                <th style="padding: 10px;">Actions</th>
+                            <tr>
+                                <th>Staff</th>
+                                <th>Type</th>
+                                <th>Dates (Days)</th>
+                                <th>Reason</th>
+                                <th>Proof</th>
+                                <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody id="admin-leave-body">
+                            <!-- Injected via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Staff Attendance Flags Widget -->
+            <div class="card" style="grid-column: 1 / -1; margin-top: 24px;">
+                <h3>⚠️ Staff Attendance Flags
+                    <span id="flagCount"
+                        style="background: var(--warning-color); color: #000; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; margin-left: 8px;">0</span>
+                </h3>
+                <div class="scrollable-table">
+                    <table class="attendance-table" style="width: 100%;">
+                        <thead>
+                            <tr>
+                                <th>Staff</th>
+                                <th>On Time</th>
+                                <th>Late</th>
+                                <th>Excused</th>
+                                <th>Unexcused</th>
+                                <th>Warning Level</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="flags-body">
+                            <!-- Injected via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Late Excuse Appeals Widget -->
+            <div class="card" style="grid-column: 1 / -1; margin-top: 24px;">
+                <h3>📝 Late Excuse Appeals
+                    <span id="appealCount"
+                        style="background: var(--accent-color); color: #fff; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; margin-left: 8px;">0</span>
+                </h3>
+                <div class="scrollable-table">
+                    <table class="attendance-table" style="width: 100%;">
+                        <thead>
+                            <tr>
+                                <th>Staff</th>
+                                <th>Date</th>
+                                <th>Arrival</th>
+                                <th>Reason</th>
+                                <th>Proof</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="appeals-body">
                             <!-- Injected via JS -->
                         </tbody>
                     </table>
@@ -121,6 +247,52 @@
             <p>System Version 1.0.0 | Final Year Project | Develop by Tazra</p>
         </footer>
     </div>
+
+    <!-- Profile Modal -->
+    <div id="profileModal" class="modal">
+        <div class="modal-content" style="max-width: 500px;">
+            <span class="close-modal"
+                onclick="document.getElementById('profileModal').style.display='none'">&times;</span>
+            <h2>Edit Admin Profile</h2>
+            <form id="profileForm">
+                <div class="form-group">
+                    <label>Full Name</label>
+                    <input type="text" name="full_name" required>
+                </div>
+                <div class="form-group">
+                    <label>Email (Required for Google Login)</label>
+                    <input type="email" name="email">
+                </div>
+                <div class="form-group">
+                    <label>Phone</label>
+                    <input type="text" name="phone">
+                </div>
+
+                <div style="margin: 20px 0; border-top: 1px solid var(--border-color); padding-top: 15px;">
+                    <h3 style="font-size: 1rem; margin-bottom: 10px; color: var(--accent-color);">Change Password
+                        (Optional)</h3>
+                    <div class="form-group">
+                        <label>Current Password</label>
+                        <input type="password" name="current_password" placeholder="Leave blank if not changing">
+                    </div>
+                    <div class="form-group">
+                        <label>New Password</label>
+                        <input type="password" name="new_password">
+                    </div>
+                </div>
+                <!-- Hidden fields required by backend update -->
+                <input type="hidden" name="staff_id">
+                <input type="hidden" name="age">
+                <input type="hidden" name="position" value="Administrator">
+                <input type="hidden" name="department" value="Management">
+
+                <button type="submit" class="btn-primary" style="width: 100%; margin-top: 20px;">Save Changes</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toast-container" class="toast-container"></div>
 
     <script src="script.js"></script>
 </body>

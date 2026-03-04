@@ -29,9 +29,13 @@ def init_db():
                     leave_balance INTEGER DEFAULT 14
                 )""")
     
-    # Try adding column if not exists (migratiom)
+    # Try adding column if not exists (migration)
     try:
         c.execute("ALTER TABLE users ADD COLUMN leave_balance INTEGER DEFAULT 14")
+    except Exception:
+        pass
+    try:
+        c.execute("ALTER TABLE users ADD COLUMN carried_forward INTEGER DEFAULT 0")
     except Exception:
         pass
     
@@ -87,6 +91,31 @@ def init_db():
     try:
         c.execute("ALTER TABLE users ADD COLUMN full_name TEXT")
     except Exception: pass
+    try:
+        c.execute("ALTER TABLE users ADD COLUMN display_name TEXT")
+    except Exception: pass
+
+    c.execute("""CREATE TABLE IF NOT EXISTS late_appeals (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    username TEXT,
+                    date TEXT,
+                    arrival_time TEXT,
+                    reason TEXT,
+                    attachment_path TEXT,
+                    status TEXT DEFAULT 'Pending',
+                    created_at TEXT,
+                    admin_note TEXT
+                )""")
+
+    c.execute("""CREATE TABLE IF NOT EXISTS warnings (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    username TEXT,
+                    level INTEGER,
+                    reason TEXT,
+                    month TEXT,
+                    issued_at TEXT,
+                    issued_by TEXT
+                )""")
 
     c.execute("SELECT * FROM users WHERE username=?", ("admin",))
     row = c.fetchone()
@@ -225,14 +254,25 @@ def verify_user(username, password):
             
     return None
 
-def create_user(username, password, role='staff', staff_id=None, email=None, phone=None, age=None, position=None, department=None, full_name=None, status='Active', temp_password=None, is_first_login=0):
+def get_user_by_email(email):
+    conn = get_db_connection()
+    c = conn.cursor()
+    c.execute("SELECT * FROM users WHERE email=?", (email,))
+    row = c.fetchone()
+    conn.close()
+    
+    if row:
+        return dict(row)
+    return None
+    
+def create_user(username, password, role='staff', staff_id=None, email=None, phone=None, age=None, position=None, department=None, full_name=None, status='Active', temp_password=None, is_first_login=0, display_name=None):
     conn = get_db_connection()
     c = conn.cursor()
     try:
         c.execute("""INSERT INTO users 
-                     (username, password, role, leave_balance, staff_id, email, phone, age, position, department, full_name, status, temp_password, is_first_login) 
-                     VALUES (?, ?, ?, 14, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""", 
-                  (username, password, role, staff_id, email, phone, age, position, department, full_name, status, temp_password, is_first_login))
+                     (username, password, role, leave_balance, staff_id, email, phone, age, position, department, full_name, status, temp_password, is_first_login, display_name) 
+                     VALUES (?, ?, ?, 14, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""", 
+                  (username, password, role, staff_id, email, phone, age, position, department, full_name, status, temp_password, is_first_login, display_name))
         conn.commit()
         return True
     except Exception as e:
@@ -241,14 +281,14 @@ def create_user(username, password, role='staff', staff_id=None, email=None, pho
     finally:
         conn.close()
 
-def update_user_details(username, staff_id, email, phone, age, position, department):
+def update_user_details(username, staff_id, email, phone, age, position, department, full_name, display_name=None):
     conn = get_db_connection()
     c = conn.cursor()
     try:
         c.execute("""UPDATE users 
-                     SET staff_id=?, email=?, phone=?, age=?, position=?, department=? 
+                     SET staff_id=?, email=?, phone=?, age=?, position=?, department=?, full_name=?, display_name=? 
                      WHERE username=?""", 
-                  (staff_id, email, phone, age, position, department, username))
+                  (staff_id, email, phone, age, position, department, full_name, display_name, username))
         conn.commit()
         return True
     except Exception as e:
@@ -289,6 +329,18 @@ def delete_user(username):
     except Exception as e:
         logger.error(f"Failed to delete user {username} from DB: {e}")
         return False
+    finally:
+        conn.close()
+
+def activation_via_google(username):
+    conn = get_db_connection()
+    c = conn.cursor()
+    try:
+        c.execute("""UPDATE users 
+                     SET status='Active', temp_password=NULL, is_first_login=0 
+                     WHERE username=?""", 
+                  (username,))
+        conn.commit()
     finally:
         conn.close()
 
@@ -407,3 +459,308 @@ def update_leave_request_details(id, type, start, end, reason, attachment_path=N
                   (type, start, end, reason, id))
     conn.commit()
     conn.close()
+
+# --- Late Appeal Functions ---
+
+def add_late_appeal(username, date, arrival_time, reason, attachment_path=None):
+    conn = get_db_connection()
+    c = conn.cursor()
+    try:
+        c.execute("""INSERT INTO late_appeals (username, date, arrival_time, reason, attachment_path, status, created_at)
+                     VALUES (?, ?, ?, ?, ?, 'Pending', ?)""",
+                  (username, date, arrival_time, reason, attachment_path, datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
+        conn.commit()
+        return True
+    except Exception as e:
+        logger.error(f"Failed to add late appeal for {username}: {e}")
+        return False
+    finally:
+        conn.close()
+
+def get_late_appeals(username=None):
+    conn = get_db_connection()
+    c = conn.cursor()
+    if username:
+        c.execute("SELECT * FROM late_appeals WHERE username=? ORDER BY created_at DESC", (username,))
+    else:
+        c.execute("SELECT * FROM late_appeals ORDER BY created_at DESC")
+    rows = c.fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+def update_late_appeal_status(id, status, admin_note=None):
+    conn = get_db_connection()
+    c = conn.cursor()
+    try:
+        c.execute("UPDATE late_appeals SET status=?, admin_note=? WHERE id=?", (status, admin_note, id))
+        conn.commit()
+        return True
+    except Exception as e:
+        logger.error(f"Error updating late appeal {id}: {e}")
+        return False
+    finally:
+        conn.close()
+
+# --- Warning Functions ---
+
+def add_warning(username, level, reason, month, issued_by):
+    conn = get_db_connection()
+    c = conn.cursor()
+    try:
+        c.execute("""INSERT INTO warnings (username, level, reason, month, issued_at, issued_by)
+                     VALUES (?, ?, ?, ?, ?, ?)""",
+                  (username, level, reason, month, datetime.now().strftime('%Y-%m-%d %H:%M:%S'), issued_by))
+        conn.commit()
+        return True
+    except Exception as e:
+        logger.error(f"Failed to add warning for {username}: {e}")
+        return False
+    finally:
+        conn.close()
+
+def get_warnings(username=None):
+    conn = get_db_connection()
+    c = conn.cursor()
+    if username:
+        c.execute("SELECT * FROM warnings WHERE username=? ORDER BY issued_at DESC", (username,))
+    else:
+        c.execute("SELECT * FROM warnings ORDER BY issued_at DESC")
+    rows = c.fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+def get_monthly_attendance_summary(username, month):
+    """Get attendance summary for a staff member for a given month (YYYY-MM).
+    Returns dict with on_time, late, absent, excused counts."""
+    conn = get_db_connection()
+    c = conn.cursor()
+    
+    # Get date range for the month
+    year, mon = int(month.split('-')[0]), int(month.split('-')[1])
+    start_date = f"{month}-01"
+    if mon == 12:
+        end_date = f"{year+1}-01-01"
+    else:
+        end_date = f"{year}-{mon+1:02d}-01"
+    
+    # Count attendance entries for this month
+    c.execute("""SELECT timestamp FROM attendance 
+                 WHERE name=? AND timestamp >= ? AND timestamp < ?
+                 ORDER BY timestamp""",
+              (username, start_date, end_date))
+    entries = c.fetchall()
+    
+    # Count excused lates (approved appeals)
+    c.execute("""SELECT COUNT(*) as cnt FROM late_appeals 
+                 WHERE username=? AND date >= ? AND date < ? AND status='Approved'""",
+              (username, start_date, end_date))
+    excused = c.fetchone()['cnt']
+    
+    conn.close()
+    
+    # Process entries - group by date, find earliest arrival per day
+    daily_arrivals = {}
+    for entry in entries:
+        ts = entry['timestamp']
+        # Handle format: "2026-02-25, 08:30:00" or "2026-02-25 08:30:00"
+        if ',' in ts:
+            date_part = ts.split(',')[0].strip()
+            time_part = ts.split(',')[1].strip()
+        elif ' ' in ts:
+            date_part = ts.split(' ')[0]
+            time_part = ts.split(' ')[1]
+        else:
+            continue
+        
+        if date_part not in daily_arrivals:
+            daily_arrivals[date_part] = time_part
+        else:
+            if time_part < daily_arrivals[date_part]:
+                daily_arrivals[date_part] = time_part
+    
+    on_time = 0
+    late = 0
+    for date, arrival in daily_arrivals.items():
+        if arrival <= '09:00:00':
+            on_time += 1
+        else:
+            late += 1
+    
+    return {
+        'on_time': on_time,
+        'late': late,
+        'excused': excused,
+        'unexcused_late': max(0, late - excused),
+        'total_days': on_time + late
+    }
+
+def get_late_count_for_month(username, month):
+    """Get unexcused late count for warning threshold checking."""
+    summary = get_monthly_attendance_summary(username, month)
+    return summary['unexcused_late']
+
+# --- Leave Maintenance Functions ---
+
+def auto_expire_pending_leaves():
+    """Auto-expire pending leave requests where the end date has already passed."""
+    conn = get_db_connection()
+    c = conn.cursor()
+    try:
+        today = datetime.now().strftime('%Y-%m-%d')
+        # Find pending requests where end_date < today
+        expired = c.execute(
+            "SELECT id, username FROM leave_requests WHERE status='Pending' AND end_date < ?",
+            (today,)
+        ).fetchall()
+        
+        if expired:
+            c.execute(
+                "UPDATE leave_requests SET status='Expired' WHERE status='Pending' AND end_date < ?",
+                (today,)
+            )
+            conn.commit()
+            logger.info(f"Auto-expired {len(expired)} old pending leave requests")
+        return len(expired)
+    except Exception as e:
+        logger.error(f"Error auto-expiring leaves: {e}")
+        return 0
+    finally:
+        conn.close()
+
+# --- Leave Policy Constants ---
+ANNUAL_ENTITLEMENT = 14    # Days per year
+MAX_CARRY_FORWARD = 7      # Max days that can carry to next year
+CARRY_FORWARD_EXPIRY_MONTH = 3  # Carried-forward days expire after March (Q1)
+
+def annual_leave_balance_reset():
+    """Annual leave balance reset with carry-forward.
+    Rules (based on real HR policy):
+    - Each staff gets 14 days annual entitlement
+    - Unused leave from previous year can carry forward, max 7 days
+    - Carried-forward days expire after March 31 if not used
+    - Total balance = 14 (new) + carried forward (max 7) = max 21 days
+    Only runs once per year."""
+    conn = get_db_connection()
+    c = conn.cursor()
+    try:
+        current_year = datetime.now().year
+        
+        # Create settings table if not exists
+        c.execute("""CREATE TABLE IF NOT EXISTS system_settings (
+                        key TEXT PRIMARY KEY,
+                        value TEXT
+                    )""")
+        
+        # Check last reset year
+        row = c.execute("SELECT value FROM system_settings WHERE key='last_leave_reset_year'").fetchone()
+        last_reset_year = int(row['value']) if row else 0
+        
+        if current_year > last_reset_year:
+            # Get all staff with their current balances
+            staff = c.execute("SELECT username, leave_balance FROM users WHERE role='staff'").fetchall()
+            
+            for s in staff:
+                remaining = s['leave_balance']
+                # Carry forward: min of remaining and MAX_CARRY_FORWARD
+                carry = min(max(remaining, 0), MAX_CARRY_FORWARD)
+                new_balance = ANNUAL_ENTITLEMENT + carry
+                
+                c.execute(
+                    "UPDATE users SET leave_balance=?, carried_forward=? WHERE username=?",
+                    (new_balance, carry, s['username'])
+                )
+                logger.info(f"  {s['username']}: {remaining} remaining → carry {carry} + {ANNUAL_ENTITLEMENT} new = {new_balance} total")
+            
+            # Record this year as reset
+            c.execute(
+                "INSERT OR REPLACE INTO system_settings (key, value) VALUES ('last_leave_reset_year', ?)",
+                (str(current_year),)
+            )
+            conn.commit()
+            logger.info(f"Annual leave reset done for {current_year} — {len(staff)} staff updated with carry-forward")
+            return True
+        else:
+            logger.info(f"Leave balance already reset for {current_year}, skipping")
+            return False
+    except Exception as e:
+        logger.error(f"Error resetting leave balance: {e}")
+        return False
+    finally:
+        conn.close()
+
+def expire_carried_forward():
+    """Expire unused carried-forward days after March 31.
+    If staff still has carried-forward days after Q1, deduct them."""
+    now = datetime.now()
+    if now.month <= CARRY_FORWARD_EXPIRY_MONTH:
+        return 0  # Not yet expired
+    
+    conn = get_db_connection()
+    c = conn.cursor()
+    try:
+        # Check if already expired this year
+        row = c.execute("SELECT value FROM system_settings WHERE key='last_cf_expiry_year'").fetchone()
+        last_expiry_year = int(row['value']) if row else 0
+        
+        if now.year <= last_expiry_year:
+            return 0  # Already expired this year
+        
+        # Find staff with carried-forward days remaining
+        staff = c.execute(
+            "SELECT username, leave_balance, carried_forward FROM users WHERE role='staff' AND carried_forward > 0"
+        ).fetchall()
+        
+        expired_count = 0
+        for s in staff:
+            cf = s['carried_forward']
+            new_balance = max(s['leave_balance'] - cf, 0)
+            c.execute(
+                "UPDATE users SET leave_balance=?, carried_forward=0 WHERE username=?",
+                (new_balance, s['username'])
+            )
+            logger.info(f"  {s['username']}: expired {cf} carried-forward days, balance {s['leave_balance']} → {new_balance}")
+            expired_count += 1
+        
+        c.execute(
+            "INSERT OR REPLACE INTO system_settings (key, value) VALUES ('last_cf_expiry_year', ?)",
+            (str(now.year),)
+        )
+        conn.commit()
+        logger.info(f"Carried-forward expiry complete — {expired_count} staff affected")
+        return expired_count
+    except Exception as e:
+        logger.error(f"Error expiring carried-forward: {e}")
+        return 0
+    finally:
+        conn.close()
+
+def get_all_staff_leave_balances():
+    """Admin view: get all staff leave balance info."""
+    conn = get_db_connection()
+    c = conn.cursor()
+    try:
+        staff = c.execute(
+            "SELECT username, full_name, display_name, leave_balance, carried_forward, staff_id FROM users WHERE role='staff' ORDER BY username"
+        ).fetchall()
+        return [{
+            'username': s['username'],
+            'name': s['display_name'] or s['full_name'] or s['username'],
+            'staff_id': s['staff_id'] or s['username'],
+            'leave_balance': s['leave_balance'],
+            'carried_forward': s['carried_forward'] or 0,
+            'annual_entitlement': ANNUAL_ENTITLEMENT,
+            'used': ANNUAL_ENTITLEMENT + (s['carried_forward'] or 0) - s['leave_balance']
+        } for s in staff]
+    except Exception as e:
+        logger.error(f"Error getting staff leave balances: {e}")
+        return []
+    finally:
+        conn.close()
+
+def run_leave_maintenance():
+    """Run all leave maintenance tasks. Call this on server startup."""
+    logger.info("Running leave maintenance checks...")
+    expired_count = auto_expire_pending_leaves()
+    reset_done = annual_leave_balance_reset()
+    cf_expired = expire_carried_forward()
+    logger.info(f"Leave maintenance done — expired leaves: {expired_count}, annual reset: {reset_done}, CF expired: {cf_expired}")

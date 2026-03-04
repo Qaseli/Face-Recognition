@@ -7,8 +7,11 @@
     <title>Staff Management - Facial Recognition System</title>
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <!-- Socket.IO Client (needed for live preview) -->
+    <script src="/socket.io/socket.io.js"></script>
     <!-- SweetAlert2 -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>document.documentElement.setAttribute('data-theme', localStorage.getItem('theme') || 'blue');</script>
 </head>
 
 <body>
@@ -27,20 +30,21 @@
         </header>
 
         <main>
-            <div class="actions-bar">
+            <div class="actions-bar" style="display:flex; gap:10px; align-items:center;">
                 <button id="addStaffBtn" class="btn-primary" style="width: auto;">+ Add New Staff</button>
+                <input type="text" id="staffSearch" placeholder="Search staff..."
+                    style="padding: 10px; border-radius: 6px; border: 1px solid var(--border-color); background: #2a2a2a; color: white; width: 250px;">
             </div>
 
-            <div class="card">
-                <table style="width: 100%; border-collapse: collapse;">
+            <div class="card" style="max-height: 650px; overflow-y: auto;">
+                <table class="attendance-table">
                     <thead>
-                        <tr
-                            style="border-bottom: 1px solid var(--border-color); text-align: left; color: var(--text-secondary);">
-                            <th style="padding: 15px; width: 50px;">No.</th>
-                            <th style="padding: 15px;">Name / Dept</th>
-                            <th style="padding: 15px;">Position / ID</th>
-                            <th style="padding: 15px;">Contact</th>
-                            <th style="padding: 15px; text-align: right;">Actions</th>
+                        <tr>
+                            <th style="width: 60px;">No.</th>
+                            <th>Name / Dept</th>
+                            <th>Position / ID</th>
+                            <th>Contact</th>
+                            <th style="text-align: right;">Actions</th>
                         </tr>
                     </thead>
                     <tbody id="staffTableBody">
@@ -63,7 +67,13 @@
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
                     <div class="form-group">
                         <label>Full Name *</label>
-                        <input type="text" name="name" id="staffName" required placeholder="e.g. John Doe">
+                        <input type="text" name="name" id="staffName" required
+                            placeholder="e.g. ZUL AZRI BIN JALALLUDIN">
+                    </div>
+                    <div class="form-group">
+                        <label>Display Name <span style="font-size:0.75rem; color:var(--text-secondary);">(shown on
+                                dashboard)</span></label>
+                        <input type="text" name="display_name" id="staffDisplayName" placeholder="e.g. Azri or ZIA">
                     </div>
                     <!-- Staff ID is now auto-generated -->
                     <div class="form-group" style="display:none;" id="staffIdGroup">
@@ -101,7 +111,65 @@
 
                 <div class="form-group" id="imageUploadGroup">
                     <label>Face Image (Required for Attendance)</label>
-                    <input type="file" name="image" id="staffImage" accept="image/*">
+
+                    <!-- RPi Status Indicator -->
+                    <div id="rpiStatusBox"
+                        style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 6px;">
+                        <span id="rpiStatusDot"
+                            style="width: 12px; height: 12px; border-radius: 50%; background: #ef4444;"></span>
+                        <span id="rpiStatusText" style="font-size: 0.85rem; color: var(--text-secondary);">Pi Camera:
+                            Checking...</span>
+                    </div>
+
+                    <!-- Preview / Capture Button -->
+                    <button type="button" id="previewBtn" class="btn-primary"
+                        style="width: 100%; margin-bottom: 10px; background: linear-gradient(135deg, #4f46e5, #7c3aed); display: flex; align-items: center; justify-content: center; gap: 8px;"
+                        onclick="startPreview()">
+                        📷 Start Camera Preview
+                    </button>
+
+                    <!-- Live Preview Feed -->
+                    <div id="previewPanel" style="display: none; margin-bottom: 15px;">
+                        <div
+                            style="position: relative; background: #000; border-radius: 8px; overflow: hidden; margin-bottom: 10px;">
+                            <img id="previewFeed" style="width: 100%; display: block; border-radius: 8px;"
+                                alt="Live Preview">
+                            <!-- Face Detection Status Overlay -->
+                            <div id="faceStatus"
+                                style="position: absolute; top: 10px; right: 10px; padding: 6px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: bold; background: rgba(239,68,68,0.9); color: white;">
+                                ⚠️ No Face
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 10px;">
+                            <button type="button" id="captureBtn" class="btn-primary" onclick="captureNow()" disabled
+                                style="flex: 1; background: linear-gradient(135deg, #10b981, #059669); display: flex; align-items: center; justify-content: center; gap: 6px; opacity: 0.5;">
+                                📸 Capture Photo (<span id="captureCountBtn">0</span>/3)
+                            </button>
+                            <button type="button" id="stopPreviewBtn" onclick="stopPreview()"
+                                style="padding: 10px 20px; background: #ef4444; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                                ⏹ Stop
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Fallback File Upload (hidden by default when Pi is online) -->
+                    <div id="fileUploadFallback" style="display: none;">
+                        <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 8px;">Or upload
+                            manually:</p>
+                        <input type="file" name="image" id="staffImage" accept="image/*">
+                    </div>
+
+                    <!-- Captured Images Preview -->
+                    <div id="capturedPreview" style="display: none; margin-top: 15px;">
+                        <label>Captured Photos (<span id="captureCount">0</span>/3)</label>
+                        <div id="capturedGrid"
+                            style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 8px;">
+                        </div>
+                        <button type="button" onclick="clearCaptures()"
+                            style="margin-top: 10px; padding: 6px 12px; background: #ef4444; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                            Clear & Recapture
+                        </button>
+                    </div>
                 </div>
 
                 <button type="submit" class="btn-primary" id="submitBtn">Register Staff</button>
@@ -118,7 +186,7 @@
                 <table style="width: 100%; border-collapse: collapse; color: var(--text-secondary);">
                     <thead>
                         <tr style="border-bottom: 1px solid var(--border-color);">
-                            <th style="padding: 10px;">Time</th>
+                            <th style="padding: 10px;">Date / Time</th>
                             <th style="padding: 10px;">Camera</th>
                             <th style="padding: 10px;">Confidence</th>
                         </tr>
@@ -141,6 +209,16 @@
         </div>
     </div>
 
+    <!-- Leave Balance Modal -->
+    <div id="leaveBalanceModal" class="modal">
+        <div class="modal-content" style="max-width: 650px;">
+            <span class="close"
+                onclick="document.getElementById('leaveBalanceModal').style.display='none'">&times;</span>
+            <h2>📋 Leave Balance: <span id="leaveBalanceName"></span></h2>
+            <div id="leaveBalanceContent" style="color: var(--text-secondary);">Loading...</div>
+        </div>
+    </div>
+
     <script>
         // Check Auth
         fetch('/api/check_auth').then(res => {
@@ -153,58 +231,248 @@
         const photosModal = document.getElementById('photosModal');
         const form = document.getElementById('staffForm');
 
-        // Load Staff
+        let allStaffData = [];
+        let capturedImages = [];  // Store base64 images from Pi camera
+
+        // Check RPi Camera Status
+        async function checkRpiStatus() {
+            try {
+                const res = await fetch('/api/rpi/status');
+                const data = await res.json();
+                const dot = document.getElementById('rpiStatusDot');
+                const text = document.getElementById('rpiStatusText');
+                const previewBtn = document.getElementById('previewBtn');
+                const fallback = document.getElementById('fileUploadFallback');
+
+                if (data.connected && data.online) {
+                    dot.style.background = '#10b981';
+                    text.textContent = 'Pi Camera: Online ✓';
+                    previewBtn.disabled = false;
+                    previewBtn.style.opacity = '1';
+                    fallback.style.display = 'none';
+                } else {
+                    dot.style.background = '#ef4444';
+                    text.textContent = 'Pi Camera: Offline';
+                    previewBtn.disabled = true;
+                    previewBtn.style.opacity = '0.5';
+                    fallback.style.display = 'block';
+                }
+            } catch (e) {
+                console.error('RPi status check failed:', e);
+            }
+        }
+
+        // Start Capture from Pi Camera
+        let previewActive = false;
+        let previewInterval = null;
+
+        async function startPreview() {
+            const staffName = document.getElementById('staffName').value || 'NewStaff';
+            const previewBtn = document.getElementById('previewBtn');
+            const previewPanel = document.getElementById('previewPanel');
+
+            previewBtn.disabled = true;
+            previewBtn.innerHTML = '⏳ Starting preview...';
+
+            try {
+                const res = await fetch('/api/staff/start_preview', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: staffName })
+                });
+
+                if (res.ok) {
+                    previewActive = true;
+                    previewPanel.style.display = 'block';
+                    previewBtn.style.display = 'none';
+
+                    // Enable capture button right away
+                    document.getElementById('captureBtn').disabled = false;
+                    document.getElementById('captureBtn').style.opacity = '1';
+
+                    // Start polling for preview frames via HTTP
+                    previewInterval = setInterval(async () => {
+                        try {
+                            const fres = await fetch('/api/staff/preview_frame');
+                            const data = await fres.json();
+                            if (data.image && previewActive) {
+                                document.getElementById('previewFeed').src = 'data:image/jpeg;base64,' + data.image;
+                                // Update face detection status (informational only)
+                                const faceStatus = document.getElementById('faceStatus');
+                                if (data.face_detected) {
+                                    faceStatus.style.background = 'rgba(16,185,129,0.9)';
+                                    faceStatus.innerHTML = '✅ Face Detected';
+                                } else {
+                                    faceStatus.style.background = 'rgba(239,68,68,0.9)';
+                                    faceStatus.innerHTML = '⚠️ No Face';
+                                }
+                            }
+                        } catch (e) { }
+                    }, 200); // Poll at ~5 FPS
+                } else {
+                    const data = await res.json();
+                    Swal.fire('Error', data.error || 'Failed to start preview', 'error');
+                    previewBtn.disabled = false;
+                    previewBtn.innerHTML = '📷 Start Camera Preview';
+                }
+            } catch (e) {
+                console.error('[PREVIEW] Error:', e);
+                Swal.fire('Error', 'Failed to connect: ' + e.message, 'error');
+                previewBtn.disabled = false;
+                previewBtn.innerHTML = '📷 Start Camera Preview';
+            }
+        }
+
+        async function captureNow() {
+            const captureBtn = document.getElementById('captureBtn');
+            const previewFeed = document.getElementById('previewFeed');
+
+            // Grab the currently displayed preview frame
+            const imgSrc = previewFeed.src;
+            if (!imgSrc || !imgSrc.startsWith('data:image')) {
+                Swal.fire('Error', 'No preview frame available yet', 'warning');
+                return;
+            }
+
+            // Extract base64 data (remove "data:image/jpeg;base64," prefix)
+            const b64 = imgSrc.split(',')[1];
+            if (!b64) {
+                Swal.fire('Error', 'Invalid frame data', 'error');
+                return;
+            }
+
+            capturedImages.push(b64);
+            showCapturedPreview(capturedImages);
+            document.getElementById('captureCountBtn').textContent = capturedImages.length;
+
+            // Flash effect on preview to confirm capture
+            previewFeed.style.filter = 'brightness(2)';
+            setTimeout(() => { previewFeed.style.filter = ''; }, 150);
+
+            if (capturedImages.length >= 3) {
+                // Auto-stop preview after 3 captures
+                await stopPreview();
+                Swal.fire({
+                    title: '✅ All Photos Captured!',
+                    text: '3 photos captured successfully. You can now register the staff.',
+                    icon: 'success',
+                    timer: 2000,
+                    showConfirmButton: false
+                });
+            } else {
+                captureBtn.innerHTML = `📸 Capture Photo (<span id="captureCountBtn">${capturedImages.length}</span>/3)`;
+            }
+        }
+
+        async function stopPreview() {
+            previewActive = false;
+            if (previewInterval) { clearInterval(previewInterval); previewInterval = null; }
+            try {
+                await fetch('/api/staff/stop_preview', { method: 'POST' });
+            } catch (e) { }
+
+            document.getElementById('previewPanel').style.display = 'none';
+            const previewBtn = document.getElementById('previewBtn');
+            previewBtn.style.display = 'flex';
+            previewBtn.disabled = false;
+            previewBtn.innerHTML = '📷 Start Camera Preview';
+        }
+
+        function showCapturedPreview(images) {
+            const grid = document.getElementById('capturedGrid');
+            const preview = document.getElementById('capturedPreview');
+            grid.innerHTML = '';
+            images.forEach((img, i) => {
+                const imgEl = document.createElement('img');
+                imgEl.src = 'data:image/jpeg;base64,' + img;
+                imgEl.style.cssText = 'width:100%; border-radius:6px; border: 2px solid var(--accent-color);';
+                imgEl.alt = `Capture ${i + 1}`;
+                grid.appendChild(imgEl);
+            });
+            document.getElementById('captureCount').textContent = images.length;
+            preview.style.display = 'block';
+        }
+
+        function clearCaptures() {
+            capturedImages = [];
+            document.getElementById('capturedGrid').innerHTML = '';
+            document.getElementById('capturedPreview').style.display = 'none';
+            document.getElementById('captureCount').textContent = '0';
+            const captureCountBtn = document.getElementById('captureCountBtn');
+            if (captureCountBtn) captureCountBtn.textContent = '0';
+        }
+
+        // Check RPi status on page load and periodically
+        checkRpiStatus();
+        setInterval(checkRpiStatus, 10000);  // Check every 10 seconds
+
         async function loadStaff() {
             staffTableBody.innerHTML = '<tr><td colspan="5" style="padding:20px; text-align:center;">Loading...</td></tr>';
             try {
-                const res = await fetch('/api/staff');
-                const staff = await res.json();
-                staffTableBody.innerHTML = '';
-
-                if (staff.length === 0) {
-                    staffTableBody.innerHTML = '<tr><td colspan="5" style="padding:20px; text-align:center;">No staff registered.</td></tr>';
-                    return;
-                }
-
-                staff.forEach((s, index) => {
-                    const info = s.details || {};
-                    const tr = document.createElement('tr');
-                    tr.style.borderBottom = '1px solid var(--border-color)';
-                    tr.style.background = 'rgba(255,255,255,0.02)';
-                    tr.style.transition = 'background 0.2s';
-                    tr.onmouseover = () => tr.style.background = 'rgba(255,255,255,0.05)';
-                    tr.onmouseout = () => tr.style.background = 'rgba(255,255,255,0.02)';
-
-                    tr.innerHTML = `
-                        <td style="padding: 15px; color: var(--text-secondary);">${index + 1}</td>
-                        <td style="padding: 15px;">
-                            <div style="font-weight: 600; font-size: 1rem; color: white;">${s.name}</div>
-                            <div style="color: var(--text-secondary); font-size: 0.85rem;">${info.department || '-'}</div>
-                        </td>
-                        <td style="padding: 15px;">
-                            <div style="color: var(--accent-color); font-size: 0.95rem;">${info.position || 'Staff'}</div>
-                            <div style="font-size: 0.85rem; color: var(--text-secondary);">ID: ${info.staff_id || '-'}</div>
-                        </td>
-                        <td style="padding: 15px;">
-                             <div style="font-size: 0.9rem;">${info.email || '-'}</div>
-                             <div style="font-size: 0.85rem; color: var(--text-secondary);">${info.phone || '-'}</div>
-                        </td>
-                        <td style="padding: 15px; text-align: right;">
-                            <div style="display: flex; gap: 8px; justify-content: flex-end;">
-                                <button class="btn-primary" onclick="viewPhotos('${s.name}')" style="padding: 6px 12px; font-size: 0.8rem; background: #6366f1; flex: 1; max-width: 80px;">Photos</button>
-                                <button class="btn-primary" onclick='openEdit("${s.name}", ${JSON.stringify(info)})' style="padding: 6px 12px; font-size: 0.8rem; flex: 1; max-width: 80px;">Edit</button>
-                                <button class="btn-primary" onclick="viewLog('${s.name}')" style="padding: 6px 12px; font-size: 0.8rem; background: var(--text-secondary); flex: 1; max-width: 80px;">Log</button>
-                                <button class="btn-danger" style="padding: 6px 12px; font-size: 0.8rem; flex: 1; max-width: 80px;" onclick="deleteStaff('${s.name}')">Del</button>
-                            </div>
-                        </td>
-                    `;
-                    staffTableBody.appendChild(tr);
-                });
+                const res = await fetch(`/api/staff?t=${new Date().getTime()}`); // Cache Buster
+                allStaffData = await res.json();
+                renderStaffTable(allStaffData);
             } catch (e) {
                 console.error(e);
                 staffTableBody.innerHTML = '<tr><td colspan="5" style="text-align:center; color: #ef4444;">Error loading staff.</td></tr>';
             }
         }
+
+        function renderStaffTable(staffList) {
+            staffTableBody.innerHTML = '';
+            if (staffList.length === 0) {
+                staffTableBody.innerHTML = '<tr><td colspan="5" style="padding:20px; text-align:center;">No staff found.</td></tr>';
+                return;
+            }
+
+            staffList.forEach((s, index) => {
+                const info = s.details || {};
+                const tr = document.createElement('tr');
+                tr.style.borderBottom = '1px solid var(--border-color)';
+                tr.style.background = 'rgba(255,255,255,0.02)';
+                tr.style.transition = 'background 0.2s';
+                tr.onmouseover = () => tr.style.background = 'rgba(255,255,255,0.05)';
+                tr.onmouseout = () => tr.style.background = 'rgba(255,255,255,0.02)';
+
+                tr.innerHTML = `
+                    <td style="padding: 15px; color: var(--text-secondary);">${index + 1}</td>
+                    <td style="padding: 15px;">
+                        <div style="font-weight: 600; font-size: 1rem; color: white;">${s.name}</div>
+                        <div style="color: var(--text-secondary); font-size: 0.85rem;">${info.department || '-'}</div>
+                    </td>
+                    <td style="padding: 15px;">
+                        <div style="color: var(--accent-color); font-size: 0.95rem;">${info.position || 'Staff'}</div>
+                        <div style="font-size: 0.85rem; color: var(--text-secondary);">ID: ${info.staff_id || '-'}</div>
+                    </td>
+                    <td style="padding: 15px;">
+                            <div style="font-size: 0.9rem;">${info.email || '-'}</div>
+                            <div style="font-size: 0.85rem; color: var(--text-secondary);">${info.phone || '-'}</div>
+                    </td>
+                    <td style="padding: 15px; text-align: right;">
+                        <div style="display: flex; gap: 8px; justify-content: flex-end;">
+                            <button class="btn-primary" onclick="viewPhotos('${s.username}')" style="padding: 6px 12px; font-size: 0.8rem; background: #6366f1; flex: 1; max-width: 80px;">Photos</button>
+                            <button class="btn-primary" onclick='openEdit("${s.username}", ${JSON.stringify(info)})' style="padding: 6px 12px; font-size: 0.8rem; flex: 1; max-width: 80px;">Edit</button>
+                            <button class="btn-primary" onclick="viewLog('${s.username}')" style="padding: 6px 12px; font-size: 0.8rem; background: var(--text-secondary); flex: 1; max-width: 80px;">Log</button>
+                            <button class="btn-primary" onclick="viewLeaveBalance('${s.username}', '${s.name}')" style="padding: 6px 12px; font-size: 0.8rem; background: #14b8a6; flex: 1; max-width: 80px;">Leave</button>
+                            <button class="btn-danger" style="padding: 6px 12px; font-size: 0.8rem; flex: 1; max-width: 80px;" onclick="deleteStaff('${s.username}')">Del</button>
+                        </div>
+                    </td>
+                `;
+                staffTableBody.appendChild(tr);
+            });
+        }
+
+        // Search Logic
+        document.getElementById('staffSearch').addEventListener('keyup', (e) => {
+            const term = e.target.value.toLowerCase();
+            const filtered = allStaffData.filter(s => {
+                const info = s.details || {};
+                const searchStr = `${s.name} ${info.staff_id} ${info.department} ${info.email}`.toLowerCase();
+                return searchStr.includes(term);
+            });
+            renderStaffTable(filtered);
+        });
+
         loadStaff();
 
         // View Photos
@@ -257,8 +525,9 @@
             document.getElementById('editUsername').value = username;
 
             // Populate fields
-            document.getElementById('staffName').value = info.full_name || username; // Use Full Name if available
-            document.getElementById('staffName').readOnly = true;
+            document.getElementById('staffName').value = info.full_name || username;
+            document.getElementById('staffName').readOnly = false; // Allow editing full name
+            document.getElementById('staffDisplayName').value = info.display_name || '';
 
             // Show ID in Edit Mode
             document.getElementById('staffIdGroup').style.display = 'block';
@@ -290,8 +559,20 @@
                     tbody.innerHTML = '<tr><td colspan="3">No records found.</td></tr>';
                 } else {
                     logs.forEach(row => {
+                        // Format timestamp for easy reading
+                        const dt = new Date(row.timestamp);
+                        const dateStr = dt.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+                        const timeStr = dt.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
                         const tr = document.createElement('tr');
-                        tr.innerHTML = `<td>${row.timestamp}</td><td>${row.camera_id}</td><td>${(row.confidence * 100).toFixed(1)}%</td>`;
+                        tr.style.borderBottom = '1px solid var(--border-color)';
+                        tr.innerHTML = `
+                            <td style="padding: 10px;">
+                                <div style="font-weight: 500;">${dateStr}</div>
+                                <div style="font-size: 0.85rem; color: var(--accent-color);">${timeStr}</div>
+                            </td>
+                            <td style="padding: 10px;">${row.camera_id}</td>
+                            <td style="padding: 10px;">${(row.confidence * 100).toFixed(1)}%</td>`;
                         tbody.appendChild(tr);
                     });
                 }
@@ -300,15 +581,105 @@
             }
         };
 
+        // View Leave Balance Modal
+        const leaveBalanceModal = document.getElementById('leaveBalanceModal');
+
+        window.viewLeaveBalance = async (username, displayName) => {
+            document.getElementById('leaveBalanceName').textContent = displayName;
+            document.getElementById('leaveBalanceContent').innerHTML = 'Loading...';
+            leaveBalanceModal.style.display = 'block';
+
+            try {
+                // Fetch user info and leave requests
+                const [userRes, leaveRes] = await Promise.all([
+                    fetch(`/api/staff/detail/${username}`),
+                    fetch('/api/leave')
+                ]);
+
+                const userInfo = await userRes.json();
+                const allLeaves = await leaveRes.json();
+                const staffLeaves = allLeaves.filter(l => l.username === username);
+
+                const balance = userInfo.leave_balance || 0;
+                const cf = userInfo.carried_forward || 0;
+                const entitlement = 14;
+                const used = Math.max(entitlement + cf - balance, 0);
+
+                // Balance stats
+                const balanceColor = balance <= 3 ? 'var(--error-color)' : balance <= 7 ? 'var(--warning-color)' : 'var(--success-color)';
+
+                let html = `
+                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px;">
+                        <div style="background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 10px; padding: 14px; text-align: center;">
+                            <div style="font-size: 1.4rem; font-weight: 700; color: var(--accent-color);">${entitlement}</div>
+                            <div style="font-size: 0.75rem; color: var(--text-secondary);">Annual</div>
+                        </div>
+                        <div style="background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 10px; padding: 14px; text-align: center;">
+                            <div style="font-size: 1.4rem; font-weight: 700; color: #14b8a6;">${cf}</div>
+                            <div style="font-size: 0.75rem; color: var(--text-secondary);">Carry Forward</div>
+                        </div>
+                        <div style="background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 10px; padding: 14px; text-align: center;">
+                            <div style="font-size: 1.4rem; font-weight: 700; color: ${balanceColor};">${balance}</div>
+                            <div style="font-size: 0.75rem; color: var(--text-secondary);">Remaining</div>
+                        </div>
+                        <div style="background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 10px; padding: 14px; text-align: center;">
+                            <div style="font-size: 1.4rem; font-weight: 700; color: var(--warning-color);">${used}</div>
+                            <div style="font-size: 0.75rem; color: var(--text-secondary);">Used</div>
+                        </div>
+                    </div>
+                    <div style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 12px; padding: 8px; background: rgba(99,102,241,0.1); border-radius: 6px;">
+                        📌 Max carry-forward: <b>7 days</b> • Carried-forward expires <b>March 31</b>
+                    </div>`;
+
+                // Leave requests table
+                if (staffLeaves.length > 0) {
+                    html += `<h3 style="font-size: 0.95rem; margin-bottom: 8px;">Leave Requests</h3>
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <thead><tr style="border-bottom: 1px solid var(--border-color);">
+                            <th style="padding: 8px; text-align: left; font-size: 0.8rem;">Type</th>
+                            <th style="padding: 8px; text-align: left; font-size: 0.8rem;">Dates</th>
+                            <th style="padding: 8px; text-align: left; font-size: 0.8rem;">Reason</th>
+                            <th style="padding: 8px; text-align: left; font-size: 0.8rem;">Status</th>
+                        </tr></thead><tbody>`;
+
+                    staffLeaves.forEach(l => {
+                        const statusColors = { 'Pending': 'var(--warning-color)', 'Approved': 'var(--success-color)', 'Rejected': 'var(--error-color)', 'Expired': 'var(--text-secondary)' };
+                        const sColor = statusColors[l.status] || 'var(--text-secondary)';
+                        const d1 = new Date(l.start_date);
+                        const d2 = new Date(l.end_date);
+                        const days = Math.ceil(Math.abs(d2 - d1) / (1000 * 60 * 60 * 24)) + 1;
+                        const dateStr = `${l.start_date} → ${l.end_date} (${days}d)`;
+
+                        html += `<tr style="border-bottom: 1px solid var(--border-color);">
+                            <td style="padding: 8px; font-size: 0.85rem;">${l.type}</td>
+                            <td style="padding: 8px; font-size: 0.85rem;">${dateStr}</td>
+                            <td style="padding: 8px; font-size: 0.85rem; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${l.reason || ''}">${l.reason || '-'}</td>
+                            <td style="padding: 8px;"><span style="color: ${sColor}; font-weight: 600; font-size: 0.85rem;">${l.status}</span></td>
+                        </tr>`;
+                    });
+                    html += '</tbody></table>';
+                } else {
+                    html += '<p style="text-align: center; color: var(--text-secondary); padding: 15px;">No leave requests found.</p>';
+                }
+
+                document.getElementById('leaveBalanceContent').innerHTML = html;
+            } catch (e) {
+                document.getElementById('leaveBalanceContent').innerHTML = '<p style="color: var(--error-color);">Error loading leave data.</p>';
+            }
+        };
+
         // Close Modals
         window.onclick = (event) => {
-            if (event.target == modal) modal.style.display = 'none';
+            if (event.target == modal) { modal.style.display = 'none'; if (previewActive) stopPreview(); }
             if (event.target == logModal) logModal.style.display = 'none';
             if (event.target == photosModal) photosModal.style.display = 'none';
+            if (event.target == leaveBalanceModal) leaveBalanceModal.style.display = 'none';
         }
 
         document.querySelectorAll('.close').forEach(c => c.onclick = function () {
-            this.closest('.modal').style.display = 'none';
+            const closedModal = this.closest('.modal');
+            if (closedModal === modal && previewActive) stopPreview();
+            closedModal.style.display = 'none';
         });
 
         // Logout
@@ -350,7 +721,28 @@
 
                 const data = await res.json();
                 if (res.ok) {
+                    // If we have captured images from Pi, save them
+                    if (!editMode && capturedImages.length > 0 && data.credentials) {
+                        try {
+                            await fetch('/api/staff/save_captures', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    staff_id: data.credentials.staff_id,
+                                    images: capturedImages
+                                })
+                            });
+
+                            // Trigger encode.py to update face encodings
+                            await fetch('/api/encode', { method: 'POST' });
+                        } catch (e) {
+                            console.error('Failed to save captures:', e);
+                        }
+                        capturedImages = [];  // Clear after saving
+                    }
+
                     modal.style.display = 'none';
+                    clearCaptures();
                     loadStaff();
 
                     // Show Credentials Popup if New User
@@ -402,7 +794,9 @@
                 const res = await fetch(`/api/staff/${encodeURIComponent(name)}`, { method: 'DELETE' });
                 if (res.ok) {
                     Swal.fire('Deleted!', 'Staff member has been removed.', 'success');
-                    loadStaff();
+                    // Reset data and reload
+                    allStaffData = [];
+                    await loadStaff();
                 } else {
                     Swal.fire('Error', 'Failed to delete staff.', 'error');
                 }
